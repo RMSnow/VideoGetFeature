@@ -3,7 +3,10 @@
 //
 
 #pragma once
-
+#include "CJiaohuDlg.h"
+#include "CPiliangDlg.h"
+#include "CTezhengDlg.h"
+#include "CChachongDlg.h"
 
 // CGetFeatureDlg 对话框
 class CGetFeatureDlg : public CDialogEx
@@ -11,6 +14,12 @@ class CGetFeatureDlg : public CDialogEx
 // 构造
 public:
 	CGetFeatureDlg(CWnd* pParent = nullptr);	// 标准构造函数
+
+	//Tab控件的成员变量
+	CJiaohuDlg m_jiaohuDlg;
+	CPiliangDlg m_piliangDlg;
+	CTezhengDlg m_tezhengDlg;
+	CChachongDlg m_chachongDlg;
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
@@ -31,4 +40,7 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult);
+	CTabCtrl m_tab;
 };

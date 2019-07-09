@@ -187,6 +187,10 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CChachongDlg.h" />
+    <ClInclude Include="CJiaohuDlg.h" />
+    <ClInclude Include="CPiliangDlg.h" />
+    <ClInclude Include="CTezhengDlg.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="GetFeature.h" />
     <ClInclude Include="GetFeatureDlg.h" />
@@ -195,6 +199,10 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CChachongDlg.cpp" />
+    <ClCompile Include="CJiaohuDlg.cpp" />
+    <ClCompile Include="CPiliangDlg.cpp" />
+    <ClCompile Include="CTezhengDlg.cpp" />
     <ClCompile Include="GetFeature.cpp" />
     <ClCompile Include="GetFeatureDlg.cpp" />
     <ClCompile Include="pch.cpp">

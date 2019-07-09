@@ -59,12 +59,14 @@ CGetFeatureDlg::CGetFeatureDlg(CWnd* pParent /*=nullptr*/)
 void CGetFeatureDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_TAB1, m_tab);
 }
 
 BEGIN_MESSAGE_MAP(CGetFeatureDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB1, &CGetFeatureDlg::OnTcnSelchangeTab1)
 END_MESSAGE_MAP()
 
 
@@ -73,6 +75,8 @@ END_MESSAGE_MAP()
 BOOL CGetFeatureDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
+	//全屏显示
+	ShowWindow(SW_MAXIMIZE);
 
 	// 将“关于...”菜单项添加到系统菜单中。
 
@@ -100,6 +104,30 @@ BOOL CGetFeatureDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+	CRect tabRect;   // 标签控件客户区的位置和大小   
+
+	m_tab.InsertItem(0, _T("交互提取"));         
+	m_tab.InsertItem(1, _T("批量提取"));
+	m_tab.InsertItem(2, _T("特征编辑"));
+	m_tab.InsertItem(3, _T("查重校验"));
+
+	m_jiaohuDlg.Create(IDD_DIALOG1_JIAOHU, &m_tab);
+	m_piliangDlg.Create(IDD_DIALOG2_PILIANG, &m_tab);
+	m_tezhengDlg.Create(IDD_DIALOG3_TEZHENG, &m_tab);
+	m_chachongDlg.Create(IDD_DIALOG4_CHACHONG, &m_tab);
+
+	m_tab.GetClientRect(&tabRect);    // 获取标签控件客户区Rect   
+
+	// 调整tabRect，使其覆盖范围适合放置标签页   
+	//tabRect.left += 1;
+	//tabRect.right -= 1;
+	tabRect.top += 20;
+	//tabRect.bottom -= 1;
+
+	m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+	m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+	m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+	m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -153,3 +181,50 @@ HCURSOR CGetFeatureDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+
+	CRect tabRect;    // 标签控件客户区的Rect   
+
+	// 获取标签控件客户区Rect，并对其调整，以适合放置标签页   
+	m_tab.GetClientRect(&tabRect);
+
+	//tabRect.left += 1;
+	//tabRect.right -= 0;
+	tabRect.top += 20;
+	//tabRect.bottom -= 0;
+
+	switch (m_tab.GetCurSel())
+	{
+	case 0:
+		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		break;
+	case 1:
+		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		break;
+	case 2:
+		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		break;
+	case 3:
+		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+		break;
+	default:
+		break;
+	}
+}
