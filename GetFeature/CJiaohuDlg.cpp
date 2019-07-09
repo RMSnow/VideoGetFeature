@@ -14,7 +14,7 @@ IMPLEMENT_DYNAMIC(CJiaohuDlg, CDialogEx)
 CJiaohuDlg::CJiaohuDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG1_JIAOHU, pParent)
 {
-	
+
 }
 
 CJiaohuDlg::~CJiaohuDlg()
@@ -34,10 +34,10 @@ END_MESSAGE_MAP()
 
 // CJiaohuDlg 消息处理程序
 
+
 void CJiaohuDlg::OnBnClickedButtonOpen()
 {
 	// TODO: 在此添加控件通知处理程序代码
-
 	// 设置过滤器   
 	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
 

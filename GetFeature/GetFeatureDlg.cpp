@@ -121,7 +121,7 @@ BOOL CGetFeatureDlg::OnInitDialog()
 	// 调整tabRect，使其覆盖范围适合放置标签页   
 	//tabRect.left += 1;
 	//tabRect.right -= 1;
-	tabRect.top += 20;
+	tabRect.top += 25;
 	//tabRect.bottom -= 1;
 
 	m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
@@ -195,7 +195,7 @@ void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 
 	//tabRect.left += 1;
 	//tabRect.right -= 0;
-	tabRect.top += 20;
+	tabRect.top += 25;
 	//tabRect.bottom -= 0;
 
 	switch (m_tab.GetCurSel())
