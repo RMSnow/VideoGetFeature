@@ -23,4 +23,6 @@ protected:
 public:
 	afx_msg void OnBnClickedButtonOpen();
 	afx_msg void OnStnClickedPicturePlay();
+	CEdit m_video_str;
+	afx_msg void OnBnClickedButtonPlay();
 };

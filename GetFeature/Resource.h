@@ -1258,6 +1258,7 @@
 #define WM_DDE_FIRST                    0x03E0
 #define IDC_TAB1                        1000
 #define IDC_BUTTON1                     1001
+#define IDC_BUTTON_PLAY                 1012
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1611,8 +1612,8 @@
 #define LVS_TYPESTYLEMASK               0xfc00
 #define SPVERSION_MASK                  0x0000FF00
 #define HTERROR                         -2
-#define PWR_FAIL                        -1
 #define UNICODE_NOCHAR                  0xFFFF
+#define PWR_FAIL                        -1
 #define HTTRANSPARENT                   -1
 
 // Next default values for new objects
