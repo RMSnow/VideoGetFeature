@@ -22,4 +22,5 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedButtonOpen();
+	afx_msg void OnStnClickedPicturePlay();
 };

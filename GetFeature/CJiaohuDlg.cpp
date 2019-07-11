@@ -29,6 +29,7 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CJiaohuDlg::OnBnClickedButtonOpen)
+	ON_STN_CLICKED(IDC_PICTURE_PLAY, &CJiaohuDlg::OnStnClickedPicturePlay)
 END_MESSAGE_MAP()
 
 
@@ -53,4 +54,10 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		//TODO: 改为显示目录名,而非文件名
 		SetDlgItemText(IDC_EDIT_FEATURE, strFilePath);
 	}
+}
+
+
+void CJiaohuDlg::OnStnClickedPicturePlay()
+{
+	// TODO: 在此添加控件通知处理程序代码
 }
