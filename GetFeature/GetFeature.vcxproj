@@ -79,8 +79,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(IncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath)</LibraryPath>
+    <IncludePath>D:\WJC\Desktop\VideoFeatureApp\SDL2-devel-2.0.9-VC\SDL2-2.0.9\include;D:\WJC\Desktop\VideoFeatureApp\ffmpeg\include;$(IncludePath)</IncludePath>
+    <LibraryPath>D:\WJC\Desktop\VideoFeatureApp\SDL2-devel-2.0.9-VC\SDL2-2.0.9\lib\x64;D:\WJC\Desktop\VideoFeatureApp\ffmpeg\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
