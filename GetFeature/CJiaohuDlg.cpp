@@ -51,6 +51,8 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CJiaohuDlg::OnBnClickedButtonOpen)
 	ON_STN_CLICKED(IDC_PICTURE_PLAY, &CJiaohuDlg::OnStnClickedPicturePlay)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CJiaohuDlg::OnBnClickedButtonPlay)
+	ON_BN_CLICKED(IDC_BUTTON_SET_FOLDER, &CJiaohuDlg::OnBnClickedButtonSetFolder)
+	ON_BN_CLICKED(IDC_BUTTON_OPEN_FOLDER, &CJiaohuDlg::OnBnClickedButtonOpenFolder)
 END_MESSAGE_MAP()
 
 
@@ -320,11 +322,8 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		m_video_file_path = fileDlg.GetPathName();
 
 		//SetDlgItemText(IDC_EDIT_FEATURE, strFolderPath);
-
 		m_feature_folder_path.SetWindowText(strFolderPath);
 	}
-
-	//AfxMessageBox(m_test_path);
 
 	/*if (play_thread) {
 		WaitForSingleObject(play_thread->m_hThread, INFINITE);
@@ -355,4 +354,39 @@ void CJiaohuDlg::OnBnClickedButtonPlay()
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 		}
 	}
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonSetFolder()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	BROWSEINFO bi;// 选择路径的对话框
+	bi.hwndOwner = NULL;
+	bi.pidlRoot = NULL;
+	bi.pszDisplayName = NULL;
+	bi.lpszTitle = _T("请选择文件夹");
+	bi.ulFlags = 0;
+	bi.lpfn = NULL;
+	bi.iImage = 0;
+
+	//调用显示选择对话框，并返回选定的路径（格式为LPCITEMIDLIST）
+	//注意下 这个函数会分配内存 但不会释放 需要手动释放
+	LPCITEMIDLIST pidl = SHBrowseForFolder(&bi);
+	if (pidl)// 若为空，则说明上面的函数调用错误
+	{
+		TCHAR folderName[MAX_PATH];
+		//将文件夹路径放到folderName中
+		SHGetPathFromIDList(pidl, folderName);
+
+		m_feature_folder_path.SetWindowText(folderName);
+	}
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonOpenFolder()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CString strPath;
+	GetDlgItem(IDC_EDIT_FEATURE)->GetWindowText(strPath);
+	ShellExecute(NULL, NULL, _T("explorer"), strPath, NULL, SW_SHOW);
 }

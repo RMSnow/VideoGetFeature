@@ -27,4 +27,6 @@ public:
 	afx_msg void OnBnClickedButtonPlay();
 
 	CString m_video_file_path;
+	afx_msg void OnBnClickedButtonSetFolder();
+	afx_msg void OnBnClickedButtonOpenFolder();
 };

@@ -1304,7 +1304,9 @@
 #define chx8                            0x0417
 #define chx9                            0x0418
 #define chx10                           0x0419
+#define IDC_BUTTON_SET_FOLDER           1049
 #define chx11                           0x041a
+#define IDC_BUTTON_OPEN_FOLDER          1050
 #define chx12                           0x041b
 #define chx13                           0x041c
 #define chx14                           0x041d
