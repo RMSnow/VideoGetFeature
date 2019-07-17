@@ -8,6 +8,7 @@
 
 
 // CChachongDlg 对话框
+// add for test
 
 IMPLEMENT_DYNAMIC(CChachongDlg, CDialogEx)
 
