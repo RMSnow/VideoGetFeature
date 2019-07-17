@@ -1297,12 +1297,15 @@
 #define chx2                            0x0411
 #define chx3                            0x0412
 #define chx4                            0x0413
+#define IDC_BUTTON_PLAY_SLOWLY          1043
 #define chx5                            0x0414
+#define IDC_BUTTON_PLAY_FAST            1044
 #define chx6                            0x0415
 #define chx7                            0x0416
 #define IDC_BUTTON_OPEN                 1047
 #define chx8                            0x0417
 #define chx9                            0x0418
+#define IDC_BUTTON_PLAY_FRAME           1048
 #define chx10                           0x0419
 #define IDC_BUTTON_SET_FOLDER           1049
 #define chx11                           0x041a

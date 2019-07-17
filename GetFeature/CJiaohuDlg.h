@@ -29,4 +29,7 @@ public:
 	CString m_video_file_path;
 	afx_msg void OnBnClickedButtonSetFolder();
 	afx_msg void OnBnClickedButtonOpenFolder();
+	afx_msg void OnBnClickedButtonPlaySlowly();
+	afx_msg void OnBnClickedButtonPlayFast();
+	afx_msg void OnBnClickedButtonPlayFrame();
 };

@@ -53,6 +53,9 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CJiaohuDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_SET_FOLDER, &CJiaohuDlg::OnBnClickedButtonSetFolder)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_FOLDER, &CJiaohuDlg::OnBnClickedButtonOpenFolder)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY_SLOWLY, &CJiaohuDlg::OnBnClickedButtonPlaySlowly)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY_FAST, &CJiaohuDlg::OnBnClickedButtonPlayFast)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY_FRAME, &CJiaohuDlg::OnBnClickedButtonPlayFrame)
 END_MESSAGE_MAP()
 
 
@@ -71,8 +74,11 @@ void log_s(const char* msg, int d = -1123) {
 int thread_exit = 0;
 int thread_pause = 0;
 
-//int is_playing = 0;
 CWinThread* play_thread = NULL;
+
+int is_playing_fast = 0;
+int is_playing_slowly = 0;
+int is_playing_frame = 0;
 
 int sfp_refresh_thread(void* opaque) {
 	while (!thread_exit) {
@@ -80,8 +86,30 @@ int sfp_refresh_thread(void* opaque) {
 			SDL_Event event;
 			event.type = SFM_REFRESH_EVENT;
 			SDL_PushEvent(&event);
+
+			//慢放
+			if (is_playing_slowly) {
+				SDL_Delay(20);
+				continue;
+			}
+			//快放
+			else if (is_playing_fast)
+			{
+				SDL_Delay(5);
+				continue;
+			}
+			//正常播放
+			SDL_Delay(10);
 		}
-		SDL_Delay(10);
+		//若为单帧播放
+		else if(is_playing_frame)
+		{
+			SDL_Event event;
+			event.type = SFM_REFRESH_EVENT;
+			SDL_PushEvent(&event);
+
+			is_playing_frame = 0;
+		}
 	}
 	thread_exit = 0;
 	thread_pause = 0;
@@ -347,11 +375,11 @@ void CJiaohuDlg::OnBnClickedButtonPlay()
 	if (play_thread) {
 		thread_pause = !thread_pause;
 		if (thread_pause) {
-			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"播放");
+			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
 		}
 		else
 		{
-			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
+			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
 		}
 	}
 }
@@ -389,4 +417,62 @@ void CJiaohuDlg::OnBnClickedButtonOpenFolder()
 	CString strPath;
 	GetDlgItem(IDC_EDIT_FEATURE)->GetWindowText(strPath);
 	ShellExecute(NULL, NULL, _T("explorer"), strPath, NULL, SW_SHOW);
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonPlaySlowly()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	thread_pause = 0;
+
+	if (!is_playing_slowly) {
+		is_playing_slowly = 1;
+		is_playing_fast = 0;
+
+		GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("正常"));
+		GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
+	}
+	else
+	{
+		is_playing_slowly = 0;
+		is_playing_fast = 0;
+
+		GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
+		GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
+	}
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonPlayFast()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	thread_pause = 0;
+
+	if (!is_playing_fast) {
+		is_playing_slowly = 0;
+		is_playing_fast = 1;
+
+		GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("正常"));
+		GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
+	}
+	else
+	{
+		is_playing_slowly = 0;
+		is_playing_fast = 0;
+
+		GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
+		GetDlgItem(IDC_BUTTON_PLAY_FAST	)->SetWindowText(_T("快放"));
+	}
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonPlayFrame()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	thread_pause = 1;
+	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
+	GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
+
+	is_playing_frame = 1;
 }
