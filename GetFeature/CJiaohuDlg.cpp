@@ -353,9 +353,9 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		m_feature_folder_path.SetWindowText(strFolderPath);
 	}
 
-	/*if (play_thread) {
-		WaitForSingleObject(play_thread->m_hThread, INFINITE);
-	}*/
+	//if (play_thread) {
+	//	WaitForSingleObject(play_thread->m_hThread, INFINITE);
+	//}
 
 	play_thread = AfxBeginThread(videoplayer, this);
 	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
