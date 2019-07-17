@@ -43,7 +43,7 @@ CJiaohuDlg::~CJiaohuDlg()
 void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_EDIT_FEATURE, m_video_str);
+	DDX_Control(pDX, IDC_EDIT_FEATURE, m_feature_folder_path);
 }
 
 
@@ -111,9 +111,16 @@ UINT videoplayer(LPVOID lpParam) {
 
 	//======================== 添加 ========================
 	CJiaohuDlg* dlg = (CJiaohuDlg*)lpParam;
-	char filepath[500] = { 0 };
-	//LPSTR被定义成是一个指向以NULL('\0')结尾的32位ANSI字符数组指针
-	GetWindowTextA(dlg->m_video_str, (LPSTR)filepath, 500);
+	//char filepath[500] = { 0 };
+	////LPSTR被定义成是一个指向以NULL('\0')结尾的32位ANSI字符数组指针
+	//GetWindowTextA(dlg->m_feature_folder_path, (LPSTR)filepath, 500);
+
+	CString video_path = dlg->m_video_file_path;
+	//AfxMessageBox(video_path);
+
+	USES_CONVERSION;
+	char* filepath = W2A(video_path);
+	//printInConsole(filepath);
 
 	//1. 初始化
 	av_register_all();
@@ -304,18 +311,20 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 
 	// 构造打开文件对话框   
 	CFileDialog fileDlg(TRUE, NULL, NULL, 0, szFilter, this);
-	CString strFilePath;
+	CString strFolderPath;
 
 	// 显示打开文件对话框   
 	if (IDOK == fileDlg.DoModal())
 	{
-		// 如果点击了文件对话框上的“打开”按钮，则将选择的文件路径显示到编辑框里   
-		strFilePath = fileDlg.GetPathName();
-		//TODO: 改为显示目录名,而非文件名
-		SetDlgItemText(IDC_EDIT_FEATURE, strFilePath);
+		strFolderPath = fileDlg.GetFolderPath();
+		m_video_file_path = fileDlg.GetPathName();
 
-		m_video_str.SetWindowText(strFilePath);
+		//SetDlgItemText(IDC_EDIT_FEATURE, strFolderPath);
+
+		m_feature_folder_path.SetWindowText(strFolderPath);
 	}
+
+	//AfxMessageBox(m_test_path);
 
 	/*if (play_thread) {
 		WaitForSingleObject(play_thread->m_hThread, INFINITE);

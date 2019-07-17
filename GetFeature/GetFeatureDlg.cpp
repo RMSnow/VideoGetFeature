@@ -12,7 +12,6 @@
 #define new DEBUG_NEW
 #endif
 
-
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -77,6 +76,9 @@ BOOL CGetFeatureDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 	//全屏显示
 	ShowWindow(SW_MAXIMIZE);
+	
+	//控制台调试Test
+	//printInConsole("Test");
 
 	// 将“关于...”菜单项添加到系统菜单中。
 

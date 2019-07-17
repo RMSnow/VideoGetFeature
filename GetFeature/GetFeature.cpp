@@ -11,6 +11,17 @@
 #define new DEBUG_NEW
 #endif
 
+//============================= 控制台调试打开 =============================
+void printInConsole(char* info)
+{
+	AllocConsole();                     // 打开控制台资源
+	freopen("CONOUT$", "w+t", stdout);// 申请写
+	//freopen("CONIN$", "r+t", stdin);  // 申请读
+	printf(info);          // 写数据（可以输出需要的调试信息等）
+	//char ch = getchar();                // 读数据
+	FreeConsole();                      // 释放控制台资源
+};
+//============================================================================
 
 // CGetFeatureApp
 

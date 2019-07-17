@@ -10,6 +10,13 @@
 
 #include "resource.h"		// 主符号
 
+//============================= 控制台调试打开 =============================
+#include "io.h"
+#include "fcntl.h"
+
+void printInConsole(char* info);
+//============================================================================
+
 
 // CGetFeatureApp:
 // 有关此类的实现，请参阅 GetFeature.cpp
