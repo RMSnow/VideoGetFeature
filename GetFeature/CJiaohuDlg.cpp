@@ -46,7 +46,7 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_FEATURE, m_feature_folder_path);
 }
 
-
+// FOR TEST
 BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CJiaohuDlg::OnBnClickedButtonOpen)
 	ON_STN_CLICKED(IDC_PICTURE_PLAY, &CJiaohuDlg::OnStnClickedPicturePlay)
