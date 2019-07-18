@@ -75,6 +75,7 @@ int thread_exit = 0;
 int thread_pause = 0;
 
 CWinThread* play_thread = NULL;
+int to_stop = 0;
 
 int is_playing_fast = 0;
 int is_playing_slowly = 0;
@@ -245,12 +246,18 @@ UINT videoplayer(LPVOID lpParam) {
 
 	video_tid = SDL_CreateThread(sfp_refresh_thread, NULL, NULL);
 	//----------------------------------------------------------------------------------------------------------------
+	//printInConsole();
 
 
 	int count = 0;
 
 	//9.读取数据播放
 	for (;;) {
+		if (to_stop) {
+			to_stop = 0;
+			return 0;
+		}
+
 		//Wait
 		SDL_WaitEvent(&event);
 		if (event.type == SFM_REFRESH_EVENT) {
@@ -304,28 +311,33 @@ UINT videoplayer(LPVOID lpParam) {
 			break;
 		}
 	}
-	//sdl退出
-	SDL_Quit();
 
-	//回收
-	if (pSwsCtx != NULL) {
-		sws_freeContext(pSwsCtx);
-	}
-	if (outBuffer != NULL) {
-		av_free(outBuffer);
-	}
-	if (pFrameYUV != NULL) {
-		av_frame_free(&pFrameYUV);
-	}
-	if (pFrame != NULL) {
-		av_frame_free(&pFrame);
-	}
-	if (pCodecCtx != NULL) {
-		avcodec_close(pCodecCtx);
-	}
-	if (pFmtCtx != NULL) {
-		avformat_close_input(&pFmtCtx);
-	}
+	//当前视频播放结束后，结束线程
+	play_thread = NULL;
+	return 0;
+
+	////sdl退出
+	//SDL_Quit();
+
+	////回收
+	//if (pSwsCtx != NULL) {
+	//	sws_freeContext(pSwsCtx);
+	//}
+	//if (outBuffer != NULL) {
+	//	av_free(outBuffer);
+	//}
+	//if (pFrameYUV != NULL) {
+	//	av_frame_free(&pFrameYUV);
+	//}
+	//if (pFrame != NULL) {
+	//	av_frame_free(&pFrame);
+	//}
+	//if (pCodecCtx != NULL) {
+	//	avcodec_close(pCodecCtx);
+	//}
+	//if (pFmtCtx != NULL) {
+	//	avformat_close_input(&pFmtCtx);
+	//}
 }
 
 //**************************************************************
@@ -353,10 +365,12 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		m_feature_folder_path.SetWindowText(strFolderPath);
 	}
 
-	//if (play_thread) {
-	//	WaitForSingleObject(play_thread->m_hThread, INFINITE);
-	//}
+	if (play_thread) {
+		to_stop = 1;
+		//AfxMessageBox(_T("play线程正在运行"));
+	}
 
+	//AfxMessageBox(_T("将要开启play线程"));
 	play_thread = AfxBeginThread(videoplayer, this);
 	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 }
