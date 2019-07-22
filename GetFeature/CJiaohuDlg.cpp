@@ -6,7 +6,6 @@
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
 
-
 //*************************** ffmpeg ***************************
 #include <iostream>
 
@@ -32,6 +31,7 @@ IMPLEMENT_DYNAMIC(CJiaohuDlg, CDialogEx)
 
 CJiaohuDlg::CJiaohuDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG1_JIAOHU, pParent)
+	
 {
 
 }
@@ -49,7 +49,6 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 // FOR TEST
 BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CJiaohuDlg::OnBnClickedButtonOpen)
-	ON_STN_CLICKED(IDC_PICTURE_PLAY, &CJiaohuDlg::OnStnClickedPicturePlay)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY, &CJiaohuDlg::OnBnClickedButtonPlay)
 	ON_BN_CLICKED(IDC_BUTTON_SET_FOLDER, &CJiaohuDlg::OnBnClickedButtonSetFolder)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_FOLDER, &CJiaohuDlg::OnBnClickedButtonOpenFolder)
@@ -80,6 +79,11 @@ int to_stop = 0;
 int is_playing_fast = 0;
 int is_playing_slowly = 0;
 int is_playing_frame = 0;
+
+
+
+
+
 
 int sfp_refresh_thread(void* opaque) {
 	while (!thread_exit) {
@@ -168,6 +172,15 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Couldn't find stream information.");
 		return -1;
 	}
+	int hours, mins, secs;
+	int64_t m_duration= pFmtCtx->duration;
+	secs = m_duration / AV_TIME_BASE;
+	
+	mins = secs / 60;
+	secs %= 60;
+	hours = mins / 60;
+	mins %= 60;
+	dlg->TimeLength.Format(_T("00:00:00/%d:%d:%d"), hours,mins,secs);
 	//5. 获取视频的index
 	int i = 0, videoIndex = -1;
 	for (; i < pFmtCtx->nb_streams; i++) {
@@ -347,6 +360,8 @@ UINT videoplayer(LPVOID lpParam) {
 
 void CJiaohuDlg::OnBnClickedButtonOpen()
 {
+	//CString TimeLength;
+
 	// TODO: 在此添加控件通知处理程序代码
 	// 设置过滤器   
 	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
@@ -369,17 +384,18 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		to_stop = 1;
 		//AfxMessageBox(_T("play线程正在运行"));
 	}
-
+	
 	//AfxMessageBox(_T("将要开启play线程"));
-	play_thread = AfxBeginThread(videoplayer, this);
+	
+	play_thread = AfxBeginThread(videoplayer,this);
+	Sleep(1000);
+	GetDlgItem(IDC_TEXT_TIMELENGTH)->SetWindowText(TimeLength);
+	GetDlgItem(IDC_TEXT_TIMELENGTH)->ShowWindow(SW_SHOW);
 	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 }
 
 
-void CJiaohuDlg::OnStnClickedPicturePlay()
-{
-	// TODO: 在此添加控件通知处理程序代码
-}
+
 
 
 void CJiaohuDlg::OnBnClickedButtonPlay()
@@ -489,4 +505,15 @@ void CJiaohuDlg::OnBnClickedButtonPlayFrame()
 	GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
 
 	is_playing_frame = 1;
+}
+
+
+BOOL CJiaohuDlg::OnInitDialog()
+{
+	CDialogEx::OnInitDialog();
+
+	// TODO:  在此添加额外的初始化
+	
+	return TRUE;  // return TRUE unless you set the focus to a control
+				  // 异常: OCX 属性页应返回 FALSE
 }
