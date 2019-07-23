@@ -1301,6 +1301,7 @@
 #define chx5                            0x0414
 #define IDC_BUTTON_PLAY_FAST            1044
 #define chx6                            0x0415
+#define IDC_TEXT_TIMELENGTH             1045
 #define chx7                            0x0416
 #define IDC_BUTTON_OPEN                 1047
 #define chx8                            0x0417

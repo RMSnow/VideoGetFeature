@@ -79,7 +79,7 @@ int to_stop = 0;
 int is_playing_fast = 0;
 int is_playing_slowly = 0;
 int is_playing_frame = 0;
-
+int frame_rate ;
 
 
 
@@ -122,11 +122,11 @@ int sfp_refresh_thread(void* opaque) {
 	SDL_Event event;
 	event.type = SFM_BREAK_EVENT;
 	SDL_PushEvent(&event);
-
 	return 0;
 }
 
 UINT videoplayer(LPVOID lpParam) {
+	
 	AVFormatContext* pFmtCtx = NULL;
 	AVCodecContext* pCodecCtx = NULL;
 	AVFrame* pFrame = NULL;
@@ -143,7 +143,6 @@ UINT videoplayer(LPVOID lpParam) {
 	SDL_Rect sdlRect;
 	SDL_Thread* video_tid = NULL;
 	SDL_Event event;
-
 	//======================== 添加 ========================
 	CJiaohuDlg* dlg = (CJiaohuDlg*)lpParam;
 	//char filepath[500] = { 0 };
@@ -161,7 +160,7 @@ UINT videoplayer(LPVOID lpParam) {
 	av_register_all();
 	avformat_network_init();
 	//2. AVFormatContext获取
-	pFmtCtx = avformat_alloc_context();
+	 pFmtCtx = avformat_alloc_context();
 	//3. 打开文件
 	if (avformat_open_input(&pFmtCtx, filepath, NULL, NULL) != 0) {
 		log_s("Couldn't open input stream.\n");
@@ -172,15 +171,47 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Couldn't find stream information.");
 		return -1;
 	}
+	
 	int hours, mins, secs;
 	int64_t m_duration= pFmtCtx->duration;
 	secs = m_duration / AV_TIME_BASE;
-	
 	mins = secs / 60;
 	secs %= 60;
 	hours = mins / 60;
 	mins %= 60;
-	dlg->TimeLength.Format(_T("00:00:00/%d:%d:%d"), hours,mins,secs);
+	if (hours < 10 && mins < 10 && secs < 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/0%d:0%d:0%d"), hours,mins, secs);
+	}
+	else if (hours < 10 && mins < 10 && secs >=10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/0%d:0%d:%d"), hours, mins, secs);
+	}
+	else if (hours < 10 && mins >= 10 && secs >= 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/0%d:%d:%d"), hours, mins, secs);
+	}
+	else if (hours < 10 && mins >= 10 && secs < 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/0%d:%d:0%d"), hours, mins, secs);
+	}
+	else if (hours >= 10 && mins < 10 && secs < 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/%d:0%d:0%d"), hours, mins, secs);
+	}
+	else if (hours >= 10 && mins >= 10 && secs < 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/%d:%d:0%d"), hours, mins, secs);
+	}
+	else if (hours >= 10 && mins < 10 && secs >= 10)
+	{
+		dlg->TimeLength.Format(_T("00:00:00/%d:0%d:%d"), hours, mins, secs);
+	}
+	else
+	{
+		dlg->TimeLength.Format(_T("00:00:00/%d:%d:%d"), hours, mins, secs);
+	}
+	//dlg->TimeLength.Format(_T("00:00:00/%d:%d:%d"), hours,mins,secs);
 	//5. 获取视频的index
 	int i = 0, videoIndex = -1;
 	for (; i < pFmtCtx->nb_streams; i++) {
@@ -194,6 +225,7 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Didn't find a video stream.");
 		return -1;
 	}
+	frame_rate = 1000/pFmtCtx->streams[videoIndex]->r_frame_rate.num;
 	//6. 获取解码器并打开
 	pCodecCtx = avcodec_alloc_context3(NULL);
 	if (avcodec_parameters_to_context(pCodecCtx, pFmtCtx->streams[videoIndex]->codecpar) < 0) {

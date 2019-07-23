@@ -21,6 +21,8 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
+	
+	
 	afx_msg void OnBnClickedButtonOpen();
 	CEdit m_feature_folder_path;
 	afx_msg void OnBnClickedButtonPlay();
