@@ -69,7 +69,7 @@ void log_s(const char* msg, int d = -1123) {
 	}
 }
 
-
+// 全局信号量
 int thread_exit = 0;
 int thread_pause = 0;
 
@@ -180,7 +180,7 @@ UINT videoplayer(LPVOID lpParam) {
 	secs %= 60;
 	hours = mins / 60;
 	mins %= 60;
-	dlg->TimeLength.Format(_T("00:00:00/%d:%d:%d"), hours,mins,secs);
+	dlg->TimeLength.Format(_T("00:00:00/%.2d:%.2d:%.2d"), hours,mins,secs); // format the output
 	//5. 获取视频的index
 	int i = 0, videoIndex = -1;
 	for (; i < pFmtCtx->nb_streams; i++) {
