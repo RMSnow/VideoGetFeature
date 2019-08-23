@@ -72,7 +72,7 @@ void CChachongDlg::OnSize(UINT nType, int cx, int cy)
 
 	}
 	GetClientRect(&m_rect);//将变化后的对话框大小设为旧大小
-
+	// add to resume
 }
 
 void CChachongDlg::get_control_original_proportion() {
