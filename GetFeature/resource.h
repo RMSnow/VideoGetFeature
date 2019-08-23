@@ -1258,7 +1258,10 @@
 #define WM_DDE_FIRST                    0x03E0
 #define IDC_TAB1                        1000
 #define IDC_BUTTON1                     1001
+#define IDC_SLIDER_SEEK                 1011
 #define IDC_BUTTON_PLAY                 1012
+#define IDC_BUTTON_GETTIME              1013
+#define IDC_BUTTON_CUTVIDEO             1015
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1278,6 +1281,7 @@
 #define psh2                            0x0401
 #define psh3                            0x0402
 #define psh4                            0x0403
+#define IDC_LIST_VIDEOCLIP              1027
 #define psh5                            0x0404
 #define psh6                            0x0405
 #define psh7                            0x0406
