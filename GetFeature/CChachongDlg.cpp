@@ -52,12 +52,9 @@ BOOL CChachongDlg::OnInitDialog()
 void CChachongDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-	AfxMessageBox(_T("调用onsize"));
 	// TODO: 在此处添加消息处理程序代码
-	if (nType != SIZE_MINIMIZED)  //判断窗口是不是最小化了，因为窗口最小化之后 ，
-		//窗口的长和宽会变成0，当前一次变化的时就会出现除以0的错误操作
-	{
 
+	if (!GetSafeHwnd() == NULL) {
 		CRect rect;// 获取当前窗口大小
 		for (std::list<control*>::iterator it = m_con_list.begin(); it != m_con_list.end(); it++) {
 			CWnd* pWnd = GetDlgItem((*it)->Id);//获取ID为woc的空间的句柄
@@ -69,10 +66,8 @@ void CChachongDlg::OnSize(UINT nType, int cx, int cy)
 			rect.bottom = (*it)->scale[3] * cy;
 			pWnd->MoveWindow(rect);//设置控件大小
 		}
-
+		GetClientRect(&m_rect);//将变化后的对话框大小设为旧大小
 	}
-	GetClientRect(&m_rect);//将变化后的对话框大小设为旧大小
-	// add to resume
 }
 
 void CChachongDlg::get_control_original_proportion() {
