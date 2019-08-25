@@ -11,6 +11,8 @@
 #include <iostream>
 using namespace std;
 
+
+#pragma comment(lib,"gdiplus.lib")
 // LNK2019	无法解析的外部符号 SDL_main，该符号在函数 main_utf8 中被引用
 
 //**************************************************************
@@ -53,6 +55,7 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_LBN_DBLCLK(IDC_LIST_VIDEOCLIP, &CJiaohuDlg::OnLbnDblclkListVideoclip)
 	ON_BN_CLICKED(IDC_BUTTON_CUTVIDEO, &CJiaohuDlg::OnBnClickedButtonCutvideo)
 	ON_BN_CLICKED(IDC_BUTTON_GETTIME, &CJiaohuDlg::OnBnClickedButtonGettime)
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -79,13 +82,12 @@ int is_playing_frame = 0;
 CString time_display;
 CString total_time;
 CString curr_time;
-CString last_time;
+int cur_hours, cur_mins, cur_secs, cur_pos;
 double sec;
 double last_sec = 0;
 int m_dbFrameRate;
 int m_dbFrameNum;
 double m_video_dura;
-double video_clock;
 double video_time_base;
 int m_slider_pos;
 double          seek_time;        //要移动的时间（秒）
@@ -94,6 +96,7 @@ int             seek_flags;       //seek的方式 AVSEEK_FLAG_FRAME等
 int64_t         seek_pos;         //seek过后的时间
 int clipindex = 0;
 vector<vector<int>> timeclips;
+
 int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
 	rArrString.RemoveAll();
@@ -136,26 +139,9 @@ int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BO
 	} while (1);
 	return rArrString.GetSize();
 }
-//int refresh_thread(LPVOID lpParam)
-//{
-//	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
-//	ASSERT(pDlg);
-//
-//	while (!pDlg->thread_exit)
-//	{
-//		//添加刷新函数
-//		if (!thread_pause) {
-//			sfp_refresh_thread(pDlg);
-//		}
-//
-//		//FIXME ideally we should wait the correct time but SDLs event passing m_streamstate so slow it would be silly
-//	}
-//
-//	return 0;
-//}
+
 int sfp_refresh_thread(void *opaque) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)opaque;
-	int hours, mins, secs,pos;
 	//double dura = *((double*)opaque);
 	while (!pDlg->thread_exit) {
 		if (!thread_pause) {
@@ -165,36 +151,31 @@ int sfp_refresh_thread(void *opaque) {
 			//慢放
 			if (is_playing_slowly) {
 				SDL_Delay(m_video_dura * 1000);
-				//video_clock += (m_video_dura * 0.5);
 			}
 			//快放
 			else if (is_playing_fast)
 			{
 				
 				SDL_Delay(m_video_dura * 250);
-				//video_clock += (m_video_dura * 0.5);
 				
 			}
 			//正常播放
 			else {
 			SDL_Delay(m_video_dura*500);
-			//video_clock += (m_video_dura * 0.5);
 			}
 			if (sec > last_sec) {
-				pos = sec;
-				secs = sec;
-				mins = secs / 60;
-				secs %= 60;
-				hours = mins / 60;
-				mins %= 60;
-				curr_time.Format(_T("%.2d : %.2d : %.2d"), hours, mins, secs);
-				//AfxMessageBox((curr_time));
-				//if (curr_time != last_time) {
+				cur_pos = sec;
+				cur_secs = sec;
+				cur_mins = cur_secs / 60;
+				cur_secs %= 60;
+				cur_hours = cur_mins / 60;
+				cur_mins %= 60;
+				curr_time.Format(_T("%.2d : %.2d : %.2d"), cur_hours, cur_mins, cur_secs);
+
 						pDlg->TimeLength.Format(_T("%s/%s"), curr_time, total_time);
 						pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
-						last_time = curr_time;
-						pDlg->m_slider_seek.SetPos(pos);
-				//}
+						pDlg->m_slider_seek.SetPos(cur_pos);
+				
 				
 			}
 			last_sec = sec;
@@ -207,29 +188,22 @@ int sfp_refresh_thread(void *opaque) {
 			SDL_PushEvent(&event);
 			is_playing_frame = 0;
 			if (sec > last_sec) {
-				pos = sec;
-				secs = sec;
-				mins = secs / 60;
-				secs %= 60;
-				hours = mins / 60;
-				mins %= 60;
-				curr_time.Format(_T("%.2d : %.2d : %.2d"), hours, mins, secs);
-				//AfxMessageBox((curr_time));
-				//if (curr_time != last_time) {
+				cur_pos = sec;
+				cur_secs = sec;
+				cur_mins = cur_secs / 60;
+				cur_secs %= 60;
+				cur_hours = cur_mins / 60;
+				cur_mins %= 60;
+				curr_time.Format(_T("%.2d : %.2d : %.2d"), cur_hours, cur_mins, cur_secs);
 				pDlg->TimeLength.Format(_T("%s/%s"), curr_time, total_time);
 				pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
-				last_time = curr_time;
-				pDlg->m_slider_seek.SetPos(pos);
-				//}
-
+				pDlg->m_slider_seek.SetPos(cur_pos);
+				
 			}
 			last_sec = sec;
 		}
 
 	}
-	//AfxMessageBox(_T("RUN thread_exit=1"));
-	//last_sec = 0;
-	//Break
 	if (normal_stop) {
 	SDL_Event event;
 	event.type = SFM_BREAK_EVENT;
@@ -244,7 +218,7 @@ int sfp_refresh_thread(void *opaque) {
 
 UINT videoplayer(LPVOID lpParam) {
 	
-	
+	sec = 0;
 	AVCodecContext* pCodecCtx = NULL;
 	AVStream* video_st;
 	AVFrame* pFrame = NULL;
@@ -311,7 +285,6 @@ UINT videoplayer(LPVOID lpParam) {
 	pDlg->m_timelength.ShowWindow(SW_SHOW);
 	pDlg->m_slider_seek.SetRange(0, time, 0);
 	last_sec = 0;
-	//m_dbFrameRate = av_q2d(video_st->r_frame_rate);
 	if (video_st->r_frame_rate.den > 0)
 		m_dbFrameRate = av_q2d(video_st->r_frame_rate);//avStream->r_frame_rate.num / avStream->r_frame_rate.den;
 	else if (video_st->codec->framerate.den > 0)
@@ -323,16 +296,6 @@ UINT videoplayer(LPVOID lpParam) {
 		m_dbFrameNum = time * m_dbFrameRate;
 	}
 	m_video_dura = time/m_dbFrameNum;
-	//int hours, mins, secs;
-	//int64_t m_duration = pFmtCtx->duration;
-	//video_time_base = av_q2d(video_st->time_base);
-	//secs = video_st->duration * video_time_base;
-	
-	//mins = secs / 60;
-	//secs %= 60;
-	//hours = mins / 60;
-	//mins %= 60;
-
 
 	CString szSplit = _T("\\");
 	CStringArray szList;
@@ -424,11 +387,8 @@ UINT videoplayer(LPVOID lpParam) {
 	for (;;) {
 
 		if (to_stop) {
-			//play_thread = NULL;
 			pDlg->thread_exit = 1;
 			to_stop = 0;
-			//AfxMessageBox(_T("RUN stop=1"));
-			//return 0;
 			break;
 		}
 
@@ -461,7 +421,6 @@ UINT videoplayer(LPVOID lpParam) {
 						SDL_RenderCopy(sdlRenderer, sdlTexture, &sdlRect, NULL);
 						SDL_RenderPresent(sdlRenderer);
 						//SDL End-----------------------
-						video_clock += m_video_dura ;
 						log_s("Succeed to play frame!", count);
 					}
 				}
@@ -486,7 +445,6 @@ UINT videoplayer(LPVOID lpParam) {
 		}
 		else if (event.type == SFM_BREAK_EVENT) {
 			log_s("break");
-			video_clock = 0;
 			is_playing_fast = 0;
 			is_playing_slowly = 0;
 			is_playing_frame = 0;
@@ -537,9 +495,6 @@ UINT videoplayer(LPVOID lpParam) {
 void CJiaohuDlg::thread_stop() {
 	to_stop = 1;
 	normal_stop = false;
-	//thread_exit = 1;
-	//AfxMessageBox(_T("RUN exit=1"));
-	video_clock = 0;
 	is_playing_fast = 0;
 	is_playing_slowly = 0;
 	is_playing_frame = 0;
@@ -717,7 +672,7 @@ BOOL CJiaohuDlg::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 
-	
+	Gdiplus::GdiplusStartup(&m_pGdiToken, &m_pGdiplusStartupInput, NULL);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -763,13 +718,10 @@ void CJiaohuDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 				}
 				int error = av_seek_frame(pFmtCtx, stream_index, seek_target, seek_flags);
 				//seek成功
-				if (error >= 0)
-				{
-
-					//last_sec = 0;
-					video_clock = ((int)(seek_pos / m_video_dura) + 1) * m_video_dura;
-
-				}
+				//if (error >= 0)
+				//{
+				//	//last_sec = 0;
+				//}
 				seek_req = 0;
 				seek_time = 0;
 
@@ -782,10 +734,6 @@ void CJiaohuDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 				thread_pause = !thread_pause;
 			}
 			//////////////////////////////////////////////////////////////////////////
-		//}
-
-
-
 
 	}
 
@@ -1003,6 +951,17 @@ void CJiaohuDlg::OnBnClickedButtonCutvideo()
 void CJiaohuDlg::OnBnClickedButtonGettime()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	Graphics g(this->m_hWnd);
+	Pen p(Color(255, 0, 0, 255));
+	g.DrawLine(&p, 100, 260, 500, 260);
+	
+
+}
 
 
+void CJiaohuDlg::OnDestroy()
+{
+	CDialogEx::OnDestroy();
+	GdiplusShutdown(m_pGdiToken);
+	// TODO: 在此处添加消息处理程序代码
 }

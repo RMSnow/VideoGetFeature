@@ -1,7 +1,8 @@
 ﻿#pragma once
-
 #include "MySlider.h"
 #include <stdlib.h>
+#include<Gdiplus.h>
+using namespace Gdiplus;
 // CJiaohuDlg 对话框
 #define SDL_MAIN_HANDLED 
 //Refresh Event
@@ -50,6 +51,10 @@ public:
 	CStatic m_timelength;
 	MySlider m_slider_seek;
 	int thread_exit = 0;
+
+	GdiplusStartupInput m_pGdiplusStartupInput;
+	ULONG_PTR m_pGdiToken;
+
 	afx_msg void OnBnClickedButtonOpen();
 	afx_msg void OnBnClickedButtonPlay();
 	afx_msg void OnBnClickedButtonSetFolder();
@@ -64,5 +69,6 @@ public:
 	afx_msg void OnBnClickedButtonCutvideo();
 	afx_msg void OnBnClickedButtonGettime();
 	void thread_stop();
+	afx_msg void OnDestroy();
 };
 int sfp_refresh_thread(void* opaque);

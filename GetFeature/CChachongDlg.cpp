@@ -52,7 +52,7 @@ BOOL CChachongDlg::OnInitDialog()
 void CChachongDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-	AfxMessageBox(_T("调用onsize"));
+	//AfxMessageBox(_T("调用onsize"));
 	// TODO: 在此处添加消息处理程序代码
 	if (nType != SIZE_MINIMIZED)  //判断窗口是不是最小化了，因为窗口最小化之后 ，
 		//窗口的长和宽会变成0，当前一次变化的时就会出现除以0的错误操作
