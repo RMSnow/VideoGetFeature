@@ -1262,6 +1262,7 @@
 #define IDC_BUTTON_PLAY                 1012
 #define IDC_BUTTON_GETTIME              1013
 #define IDC_BUTTON_CUTVIDEO             1015
+#define IDC_BUTTON_CLIPEXT              1016
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1283,6 +1284,7 @@
 #define psh4                            0x0403
 #define IDC_LIST_VIDEOCLIP              1027
 #define psh5                            0x0404
+#define IDC_BUTTON_DELCLIP              1028
 #define psh6                            0x0405
 #define psh7                            0x0406
 #define IDC_PICTURE_PLAY                1030
@@ -1307,6 +1309,7 @@
 #define chx6                            0x0415
 #define IDC_TEXT_TIMELENGTH             1045
 #define chx7                            0x0416
+#define IDC_PROGRESS                    1046
 #define IDC_BUTTON_OPEN                 1047
 #define chx8                            0x0417
 #define chx9                            0x0418
@@ -1332,6 +1335,7 @@
 #define rad10                           0x0429
 #define rad11                           0x042a
 #define rad12                           0x042b
+#define IDC_TEXT_DESCRIBE               1067
 #define rad13                           0x042c
 #define rad14                           0x042d
 #define rad15                           0x042e

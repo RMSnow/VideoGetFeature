@@ -39,6 +39,8 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_LIST_VIDEOCLIP, m_listbox_videoclip);
 	DDX_Control(pDX, IDC_TEXT_TIMELENGTH, m_timelength);
 	DDX_Control(pDX, IDC_SLIDER_SEEK, m_slider_seek);
+	DDX_Control(pDX, IDC_TEXT_DESCRIBE, m_describe);
+	DDX_Control(pDX, IDC_PROGRESS, m_progress);
 }
 
 
@@ -56,6 +58,9 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_CUTVIDEO, &CJiaohuDlg::OnBnClickedButtonCutvideo)
 	ON_BN_CLICKED(IDC_BUTTON_GETTIME, &CJiaohuDlg::OnBnClickedButtonGettime)
 	ON_WM_DESTROY()
+	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_BUTTON_DELCLIP, &CJiaohuDlg::OnBnClickedButtonDelclip)
+	ON_WM_PAINT()
 END_MESSAGE_MAP()
 
 
@@ -71,32 +76,40 @@ void log_s(const char* msg, int d = -1123) {
 }
 
 // 全局信号量
+
+bool isexcut_black = true;
 bool normal_stop = true;
-int thread_pause = 0;
+bool thread_pause = false;
+bool thread_exit = false;
 CWinThread* play_thread = NULL;
 int to_stop = 0;
 int videoIndex = -1;
 int is_playing_fast = 0;
 int is_playing_slowly = 0;
 int is_playing_frame = 0;
+double alltime;
 CString time_display;
 CString total_time;
 CString curr_time;
 int cur_hours, cur_mins, cur_secs, cur_pos;
 double sec;
-double last_sec = 0;
+double last_sec = -1;
 int m_dbFrameRate;
 int m_dbFrameNum;
 double m_video_dura;
-double video_time_base;
 int m_slider_pos;
 double          seek_time;        //要移动的时间（秒）
 int             seek_req;         //seek的标志 是否需要seek
 int             seek_flags;       //seek的方式 AVSEEK_FLAG_FRAME等
 int64_t         seek_pos;         //seek过后的时间
 int clipindex = 0;
-vector<vector<int>> timeclips;
-
+bool start_or_end = true;//true为开始时间，false为结束时间
+bool con_add = true;//继续添加虚线
+vector<int> timeclips;
+vector<int>::iterator it;
+int timeclips_size;
+CRect rect;
+CWnd* pwnd;
 int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
 	rArrString.RemoveAll();
@@ -142,9 +155,12 @@ int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BO
 
 int sfp_refresh_thread(void *opaque) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)opaque;
-	//double dura = *((double*)opaque);
-	while (!pDlg->thread_exit) {
+	while (!thread_exit) {
 		if (!thread_pause) {
+			//if (isexcut_line) {
+			//	pDlg->InvalidateRect(rect);
+			//	pDlg->UpdateWindow();
+			//}
 			SDL_Event event;
 			event.type = SFM_REFRESH_EVENT;
 			SDL_PushEvent(&event);
@@ -163,22 +179,7 @@ int sfp_refresh_thread(void *opaque) {
 			else {
 			SDL_Delay(m_video_dura*500);
 			}
-			if (sec > last_sec) {
-				cur_pos = sec;
-				cur_secs = sec;
-				cur_mins = cur_secs / 60;
-				cur_secs %= 60;
-				cur_hours = cur_mins / 60;
-				cur_mins %= 60;
-				curr_time.Format(_T("%.2d : %.2d : %.2d"), cur_hours, cur_mins, cur_secs);
 
-						pDlg->TimeLength.Format(_T("%s/%s"), curr_time, total_time);
-						pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
-						pDlg->m_slider_seek.SetPos(cur_pos);
-				
-				
-			}
-			last_sec = sec;
 		}
 		//若为单帧播放
 		else if(is_playing_frame)
@@ -187,20 +188,7 @@ int sfp_refresh_thread(void *opaque) {
 			event.type = SFM_REFRESH_EVENT;
 			SDL_PushEvent(&event);
 			is_playing_frame = 0;
-			if (sec > last_sec) {
-				cur_pos = sec;
-				cur_secs = sec;
-				cur_mins = cur_secs / 60;
-				cur_secs %= 60;
-				cur_hours = cur_mins / 60;
-				cur_mins %= 60;
-				curr_time.Format(_T("%.2d : %.2d : %.2d"), cur_hours, cur_mins, cur_secs);
-				pDlg->TimeLength.Format(_T("%s/%s"), curr_time, total_time);
-				pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
-				pDlg->m_slider_seek.SetPos(cur_pos);
-				
-			}
-			last_sec = sec;
+
 		}
 
 	}
@@ -209,16 +197,19 @@ int sfp_refresh_thread(void *opaque) {
 	event.type = SFM_BREAK_EVENT;
 	SDL_PushEvent(&event);
 	}
-	
-	pDlg->thread_exit = 0;
-	thread_pause = 0;
+	thread_exit = false;
+	thread_pause = false;
 	normal_stop = true;
 	return 0;
 }
 
 UINT videoplayer(LPVOID lpParam) {
-	
+	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+
+	thread_exit = false;
 	sec = 0;
+	last_sec = -1;
+	thread_pause = false;
 	AVCodecContext* pCodecCtx = NULL;
 	AVStream* video_st;
 	AVFrame* pFrame = NULL;
@@ -237,11 +228,12 @@ UINT videoplayer(LPVOID lpParam) {
 	SDL_Event event;
 	
 	//======================== 添加 ========================
-	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
-	pDlg->thread_exit = 0;
+	
+
+	
+	//thread_pause = false;
 	USES_CONVERSION;
 	char* filepath = W2A(pDlg->VideoFilepath);
-	//printInConsole(filepath);
 
 	//1. 初始化
 	av_register_all();
@@ -272,19 +264,20 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Didn't find a video stream.");
 		return -1;
 	}
-
-
 	video_st = pDlg->pFmtCtx->streams[videoIndex];
-	double time = (double)(pDlg->pFmtCtx->duration) / AV_TIME_BASE;//时长
-	int secs = (int)time % 60;
-	int mins = (int)time / 60 % 60;
-	int hours = (int)time / 60 / 60;
+	alltime = (double)(pDlg->pFmtCtx->duration) / AV_TIME_BASE;//时长
+	pDlg->m_slider_seek.alltime = alltime;
+	int secs = (int)alltime % 60;
+	int mins = (int)alltime / 60 % 60;
+	int hours = (int)alltime / 60 / 60;
 	total_time.Format(_T("%.2d : %.2d : %.2d"), hours, mins, secs);
 	pDlg->TimeLength.Format(_T("00 : 00 : 00/%s"), total_time); // format the output
 	pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
 	pDlg->m_timelength.ShowWindow(SW_SHOW);
-	pDlg->m_slider_seek.SetRange(0, time, 0);
-	last_sec = 0;
+
+	pDlg->m_slider_seek.SetRange(0, alltime*10);
+	pDlg->m_slider_seek.SetTicFreq(1);
+
 	if (video_st->r_frame_rate.den > 0)
 		m_dbFrameRate = av_q2d(video_st->r_frame_rate);//avStream->r_frame_rate.num / avStream->r_frame_rate.den;
 	else if (video_st->codec->framerate.den > 0)
@@ -293,24 +286,25 @@ UINT videoplayer(LPVOID lpParam) {
 	m_dbFrameNum = video_st->nb_frames;
 	if (m_dbFrameNum == 0)
 	{
-		m_dbFrameNum = time * m_dbFrameRate;
+		m_dbFrameNum = alltime * m_dbFrameRate;
 	}
-	m_video_dura = time/m_dbFrameNum;
+	m_video_dura = alltime /m_dbFrameNum;
 
 	CString szSplit = _T("\\");
 	CStringArray szList;
 	int Count = SplitString(pDlg->VideoFilepath, szSplit, szList, FALSE);
 	pDlg->VideoFilename = szList.GetAt(Count - 1);
+
 	if (pDlg->newvideo){
 	pDlg->m_listbox_videoclip.AddString(pDlg->VideoFilename);
 	}
+
 	CString szSplit2 = _T(".");
 	CStringArray szList2;
 	int Count2 = SplitString(pDlg->VideoFilename, szSplit2, szList2, FALSE);
 	pDlg->suffix = szList2.GetAt(Count2 - 1);
 	int n = pDlg->VideoFilename.ReverseFind('.');
 	pDlg->VideoFilename_nosuffix = pDlg->VideoFilename.Left(n);
-	Sleep(100);
 	//6. 获取解码器并打开
 	pCodecCtx = avcodec_alloc_context3(NULL);
 	
@@ -328,6 +322,7 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Could not open codec.");
 		return -1;
 	}
+	
 	//7. 解码播放开始准备工作
 	pFrame = av_frame_alloc();
 	pFrameYUV = av_frame_alloc();
@@ -353,11 +348,7 @@ UINT videoplayer(LPVOID lpParam) {
 	}
 	screen_w = pCodecCtx->width;
 	screen_h = pCodecCtx->height;
-
-	//======================== 添加 ========================
-	/*screen = SDL_CreateWindow("WS ffmpeg player", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		pCodecCtx->width / 2, pCodecCtx->height / 2, SDL_WINDOW_OPENGL);
-	*/
+	isexcut_black = false;
 	screen = SDL_CreateWindowFrom(pDlg->GetDlgItem(IDC_PICTURE_PLAY)->GetSafeHwnd());
 	
 	if (!screen) {
@@ -375,26 +366,47 @@ UINT videoplayer(LPVOID lpParam) {
 	sdlRect.y = 0;
 	sdlRect.w = screen_w;
 	sdlRect.h = screen_h;
-
 	video_tid = SDL_CreateThread(sfp_refresh_thread,NULL, (void*)pDlg);
-	//----------------------------------------------------------------------------------------------------------------
-	//printInConsole();
 
 
-	int count = 0;
 
 	//9.读取数据播放
-	for (;;) {
+	for (;;) {		
+
 
 		if (to_stop) {
-			pDlg->thread_exit = 1;
+			
 			to_stop = 0;
+			pDlg->m_slider_seek.SetPos(0);
+			SDL_Quit();
+			pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
+			thread_exit = true;
 			break;
-		}
-
+		}	
 		//Wait
 		SDL_WaitEvent(&event);
 		if (event.type == SFM_REFRESH_EVENT) {
+
+			if (seek_req)
+			{
+				int stream_index = -1;
+				
+				//转化成纳秒
+				int64_t seek_target = seek_pos * 1000000;
+				stream_index = videoIndex;
+				if (stream_index >= 0)
+				{
+					AVRational time_base_q;
+					time_base_q.num = 1;
+					time_base_q.den = AV_TIME_BASE;
+					//这里一定要注意：不单纯的是从秒转成毫秒，//seek_target = seek_target / 1000; 这样做是不对的
+					seek_target = av_rescale_q(seek_target, time_base_q, pDlg->pFmtCtx->streams[stream_index]->time_base);
+				}
+				int error = av_seek_frame(pDlg->pFmtCtx, stream_index, seek_target, seek_flags);
+				last_sec = -1;
+				seek_req = 0;
+			}
+
 			if (av_read_frame(pDlg->pFmtCtx, pPacket) == 0) {
 				if (pPacket->stream_index == videoIndex) {
 					if (avcodec_send_packet(pCodecCtx, pPacket) != 0) {//解码一帧压缩数据
@@ -409,10 +421,22 @@ UINT videoplayer(LPVOID lpParam) {
 							continue;
 						}
 						int pts = pPacket->pts > 0 ? pPacket->pts : pPacket->dts;
-
+						
 						//当前帧显示时间
 						sec = pts * av_q2d(video_st->time_base);
-						count++;
+						if (sec > last_sec) {
+							cur_pos = sec*10;
+							cur_secs = sec;
+							cur_mins = cur_secs / 60;
+							cur_secs %= 60;
+							cur_hours = cur_mins / 60;
+							cur_mins %= 60;
+							curr_time.Format(_T("%.2d : %.2d : %.2d"), cur_hours, cur_mins, cur_secs);
+							pDlg->TimeLength.Format(_T("%s/%s"), curr_time, total_time);
+							pDlg->m_timelength.SetWindowText(pDlg->TimeLength);
+							pDlg->m_slider_seek.SetPos(cur_pos);
+							last_sec = sec;
+						}
 
 						//SDL播放---------------------------
 						SDL_UpdateTexture(sdlTexture, NULL, pFrameYUV->data[0], pFrameYUV->linesize[0]);
@@ -420,14 +444,13 @@ UINT videoplayer(LPVOID lpParam) {
 						//SDL_RenderCopy( sdlRenderer, sdlTexture, &sdlRect, &sdlRect);  
 						SDL_RenderCopy(sdlRenderer, sdlTexture, &sdlRect, NULL);
 						SDL_RenderPresent(sdlRenderer);
-						//SDL End-----------------------
-						log_s("Succeed to play frame!", count);
+					
 					}
 				}
 			}
 			else {
 				//退出线程
-				pDlg->thread_exit = 1;
+				thread_exit = true;
 				av_packet_unref(pPacket);
 				//AfxMessageBox(_T("播放结束"));
 			}
@@ -440,7 +463,7 @@ UINT videoplayer(LPVOID lpParam) {
 		}
 		else if (event.type == SDL_QUIT) {
 			log_s("quit");
-			pDlg->thread_exit = 1;
+			thread_exit = true;
 			break;
 		}
 		else if (event.type == SFM_BREAK_EVENT) {
@@ -449,43 +472,20 @@ UINT videoplayer(LPVOID lpParam) {
 			is_playing_slowly = 0;
 			is_playing_frame = 0;
 			play_thread = NULL;
+			isexcut_black = true;
+			pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+			pDlg->GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
+			pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
+			pDlg->GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+			pDlg->GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+			pDlg->GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+			SDL_Quit();
+			pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
 			//AfxMessageBox(_T("播放结束"));
 			break;
 		}
 	}
 
-	//当前视频播放结束后，结束线程
-	//play_thread = NULL;
-	//pDlg->pFmtCtx = NULL;
-
-	//sdl退出
-	//SDL_Quit();
-
-	////回收
-	//if (pSwsCtx != NULL) {
-	//	sws_freeContext(pSwsCtx);
-	//	pSwsCtx = NULL;
-	//}
-	//if (outBuffer != NULL) {
-	//	av_free(outBuffer);
-	//	outBuffer = NULL;
-	//}
-	//if (pFrameYUV != NULL) {
-	//	av_frame_free(&pFrameYUV);
-	//	pFrameYUV = NULL;
-	//}
-	//if (pFrame != NULL) {
-	//	av_frame_free(&pFrame);
-	//	pFrame = NULL;
-	//}
-	//if (pCodecCtx != NULL) {
-	//	avcodec_close(pCodecCtx);
-	//	pCodecCtx = NULL;
-	//}
-	//if (dlg->pFmtCtx != NULL) {
-	//	avformat_close_input(&dlg->pFmtCtx);
-	//	dlg->pFmtCtx = NULL;
-	//}
 	return 0;
 }
 
@@ -498,6 +498,7 @@ void CJiaohuDlg::thread_stop() {
 	is_playing_fast = 0;
 	is_playing_slowly = 0;
 	is_playing_frame = 0;
+	isexcut_black = true;
 }
 
 void CJiaohuDlg::OnBnClickedButtonOpen()
@@ -506,6 +507,7 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 
 	// TODO: 在此添加控件通知处理程序代码
 	// 设置过滤器   
+	
 
 	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
 
@@ -524,17 +526,28 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		newvideo = true;
 		if (play_thread) {
 			thread_stop();
-			//AfxMessageBox(_T("play线程正在运行"));
 		}
-		//AfxMessageBox(_T("将要开启play线程"));
-		m_slider_seek.SetPos(0);
-		play_thread = AfxBeginThread(videoplayer, this);
-		//Sleep(1000);
-		m_listbox_videoclip.ResetContent();
-		//GetDlgItem(IDC_TEXT_TIMELENGTH)->SetWindowText(TimeLength);
-		//GetDlgItem(IDC_TEXT_TIMELENGTH)->ShowWindow(SW_SHOW);
-		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 
+		timeclips.clear();
+		m_slider_seek.timepos.clear();
+		thread_pause = false;
+		thread_exit = false;
+		con_add = true;
+		//pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+		m_slider_seek.GetClientRect(&rect);
+		//ScreenToClient(rect);
+		//m_slider_seek.SetPos(0);
+		Sleep(300);
+		play_thread = AfxBeginThread(videoplayer, this);
+		m_listbox_videoclip.ResetContent();
+		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
+		GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+		
+		m_describe.SetWindowText(_T("播放视频"));
+		GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
+		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
 	}
 
 
@@ -549,10 +562,12 @@ void CJiaohuDlg::OnBnClickedButtonPlay()
 		thread_pause = !thread_pause;
 		if (thread_pause) {
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+			m_describe.SetWindowText(_T("停止播放"));
 		}
 		else
 		{
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
+			m_describe.SetWindowText(_T("播放视频"));
 		}
 	}
 }
@@ -657,7 +672,7 @@ void CJiaohuDlg::OnBnClickedButtonPlayFast()
 void CJiaohuDlg::OnBnClickedButtonPlayFrame()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	thread_pause = 1;
+	thread_pause = true;
 	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
 	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
 	GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
@@ -671,8 +686,13 @@ BOOL CJiaohuDlg::OnInitDialog()
 	CDialogEx::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
-
+	get_control_original_proportion();
 	Gdiplus::GdiplusStartup(&m_pGdiToken, &m_pGdiplusStartupInput, NULL);
+	GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	GetDlgItem(IDC_PROGRESS)->ShowWindow(0);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -684,57 +704,23 @@ void CJiaohuDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	m_slider_pos = m_slider_seek.GetPos();
 	if (pScrollBar->GetSafeHwnd() == m_slider_seek.GetSafeHwnd())        //如果是 文件播放进度条
 	{
-		//?? seek后的文件结束时间可以优化用video->clock代表文件当前播放的时间 和文件结束时间不匹配
-		//首先暂停
-		//////////////////////////////////////////////////////////////////////////
-		if (!thread_pause) //如果正在播放
-		{
-			//暂停
-			thread_pause = !thread_pause;
-		}
-		//////////////////////////////////////////////////////////////////////////
-
-		//if (nSBCode == SB_ENDSCROLL) //结束滚动  
-		//{
-			seek_time = m_slider_pos - (int)(sec);  //获取改变的时常 可能是整数也可能是负数
+		if (play_thread!=NULL){
 			seek_req = 1;
-			seek_pos = m_slider_pos;
+			seek_pos = m_slider_pos/10;
 			seek_flags = AVSEEK_FLAG_FRAME;//m_streamstate->seek_time < 0 ? AVSEEK_FLAG_BACKWARD : 0;
 			m_slider_pos = 0;
-			//////////////////////////////////////////////////////////////////////////
-			if (seek_req)
-			{
-				int stream_index = -1;
-				//转化成纳秒
-				int64_t seek_target = seek_pos * 1000000;
-				stream_index = videoIndex;
-				if (stream_index >= 0)
-				{
-					AVRational time_base_q;
-					time_base_q.num = 1;
-					time_base_q.den = AV_TIME_BASE;
-					//这里一定要注意：不单纯的是从秒转成毫秒，//seek_target = seek_target / 1000; 这样做是不对的
-					seek_target = av_rescale_q(seek_target, time_base_q, pFmtCtx->streams[stream_index]->time_base);
-				}
-				int error = av_seek_frame(pFmtCtx, stream_index, seek_target, seek_flags);
-				//seek成功
-				//if (error >= 0)
-				//{
-				//	//last_sec = 0;
-				//}
-				seek_req = 0;
-				seek_time = 0;
-
-			}
-			//恢复播放
+			Sleep(10);
 			if (thread_pause) //如果正在暂停
-			{
-				//播放
-				
-				thread_pause = !thread_pause;
-			}
-			//////////////////////////////////////////////////////////////////////////
-
+				{
+					//播放
+					thread_pause = false;
+				}
+		}
+		CRect rect;
+		//CWnd* pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+		m_slider_seek.GetClientRect(&rect);
+		InvalidateRect(rect);
+		UpdateWindow();
 	}
 
 	CDialogEx::OnHScroll(nSBCode, nPos, pScrollBar);
@@ -752,23 +738,32 @@ void CJiaohuDlg::OnLbnDblclkListVideoclip()
 		int nSel = m_listbox_videoclip.GetCurSel();
 		if (nSel != LB_ERR) {
 			newvideo = false;
+
 			if (play_thread) {
 				thread_stop();
 				//AfxMessageBox(_T("play线程正在运行"));
 			}
-			m_slider_seek.SetPos(0);
+			timeclips.clear();
+			m_slider_seek.timepos.clear();
+			thread_pause = false;
+			thread_exit = false;
+			con_add = true;		
+			//pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+			m_slider_seek.GetClientRect(&rect);
+			//m_slider_seek.SetPos(0);
+			Sleep(300);
 			CString s;
 			m_listbox_videoclip.GetText(nSel, s);
 			VideoFilepath = strVideoFolderPath + "\\" + s;
 			play_thread = AfxBeginThread(videoplayer, this);
-			//Sleep(1000);
-			//GetDlgItem(IDC_TEXT_TIMELENGTH)->SetWindowText(TimeLength);
-			//GetDlgItem(IDC_TEXT_TIMELENGTH)->ShowWindow(SW_SHOW);
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
+			GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+			m_describe.SetWindowText(_T("播放视频"));
+			GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
+			GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+			GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+			GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
 		}
-
-
-		
 	}
 
 end:
@@ -779,189 +774,201 @@ end:
 	}
 }
 
-int CJiaohuDlg::SplitVideo(int startTime, int endTime, const char* pDst)
-{
-	
-	AVFormatContext* pOutAVFmtCtx = NULL;
-	AVOutputFormat* pOutAVFmt = NULL;
-	AVPacket pkt;
-	int ret;
-	int i;
-	int isOpen = 0;
-
-	/* 打开输出文件 */
-	avformat_alloc_output_context2(&pOutAVFmtCtx, NULL, NULL, pDst);
-	if (!pOutAVFmtCtx)
-	{
-		printf("avformat_alloc_output_context2 error!\n");
-		ret = AVERROR_UNKNOWN;
-		goto end;
-	}
-
-	pOutAVFmt = pOutAVFmtCtx->oformat;
-
-	/* 为输出多媒体文件创建流并且拷贝流参数 */
-	for (i = 0; i < pFmtCtx->nb_streams; i++)
-	{
-		AVStream* pInStream = pFmtCtx->streams[i];
-		AVStream* pOutStream = avformat_new_stream(pOutAVFmtCtx, pInStream->codec->codec);;
-		if (!pOutStream)
-		{
-			printf("avformat_new_stream error!\n");
-			ret = AVERROR_UNKNOWN;
-			goto end;
-		}
-
-		/* 拷贝参数 */
-		ret = avcodec_copy_context(pOutStream->codec, pInStream->codec);
-		if (ret < 0)
-		{
-			printf("avcodec_copy_context error!\n");
-			goto end;
-		}
-
-		/* 拷贝参数 */
-		ret = avcodec_parameters_copy(pOutStream->codecpar, pInStream->codecpar);
-		if (ret < 0)
-		{
-			printf("avcodec_parameters_copy error!\n");
-			return -1;
-		}
-
-		pOutStream->codec->codec_tag = 0;
-
-	}
-
-	av_dump_format(pOutAVFmtCtx, 0, pDst, 1);
-
-	/* 打开输出多媒体文件，准备写数据 */
-	ret = avio_open(&pOutAVFmtCtx->pb, pDst, AVIO_FLAG_WRITE);
-	if (ret < 0)
-	{
-		printf("avio_open error!\n");
-		goto end;
-	}
-	isOpen = 1;
-
-	/* 写多媒体文件头 */
-	ret = avformat_write_header(pOutAVFmtCtx, NULL);
-	if (ret < 0)
-	{
-		printf("avformat_write_header error!\n");
-		goto end;
-	}
-
-	/* 移动到相应的时间点 */
-	ret = av_seek_frame(pFmtCtx, -1, startTime * AV_TIME_BASE, AVSEEK_FLAG_ANY);
-	if (ret < 0)
-	{
-		printf("av_seek_frame error!\n");
-		goto end;
-	}
-
-	int64_t* dtsStartTime = (int64_t*)malloc(sizeof(int64_t) * pFmtCtx->nb_streams);
-	memset(dtsStartTime, 0, sizeof(int64_t) * pFmtCtx->nb_streams);
-	int64_t* ptsStartTime = (int64_t*)malloc(sizeof(int64_t) * pFmtCtx->nb_streams);
-	memset(ptsStartTime, 0, sizeof(int64_t) * pFmtCtx->nb_streams);
-
-	while (1)
-	{
-		AVStream* pInStream, * pOutStream;
-
-		ret = av_read_frame(pFmtCtx, &pkt);
-		if (ret < 0)
-			break;
-
-		pInStream = pFmtCtx->streams[pkt.stream_index];
-		pOutStream = pOutAVFmtCtx->streams[pkt.stream_index];
-
-		if (av_q2d(pInStream->time_base) * pkt.pts > endTime)
-		{
-			av_free_packet(&pkt);
-			break;
-		}
-
-		if (dtsStartTime[pkt.stream_index] == 0)
-			dtsStartTime[pkt.stream_index] = pkt.dts;
-
-		if (ptsStartTime[pkt.stream_index] == 0)
-			ptsStartTime[pkt.stream_index] = pkt.pts;
-
-		/* 转化时间基 */
-		pkt.pts = av_rescale_q_rnd(pkt.pts - ptsStartTime[pkt.stream_index], pInStream->time_base, pOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-		pkt.dts = av_rescale_q_rnd(pkt.dts - dtsStartTime[pkt.stream_index], pInStream->time_base, pOutStream->time_base, (AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-		if (pkt.pts < 0)
-			pkt.pts = 0;
-
-		if (pkt.dts < 0)
-			pkt.dts = 0;
-
-		pkt.duration = (int)av_rescale_q((int64_t)pkt.duration, pInStream->time_base, pOutStream->time_base);
-		pkt.pos = -1;
-
-		/* 写数据 */
-		ret = av_interleaved_write_frame(pOutAVFmtCtx, &pkt);
-		if (ret < 0)
-		{
-			printf("av_interleaved_write_frame error!\n");
-			break;
-		}
-
-		av_free_packet(&pkt);
-	}
-
-	free(dtsStartTime);
-	free(ptsStartTime);
-
-	av_write_trailer(pOutAVFmtCtx);
-
-end:
-	if (isOpen)
-		avio_closep(&pOutAVFmtCtx->pb);
-
-	if (pOutAVFmtCtx)
-		avformat_free_context(pOutAVFmtCtx);
-
-	return ret;
-}
-
-
 void CJiaohuDlg::OnBnClickedButtonCutvideo()
 {
 	// TODO: 在此添加控件通知处理程序代码
-
+	m_progress.ShowWindow(SW_SHOW);
+	m_progress.RedrawWindow();
+	m_progress.SetPos(100);
 	if (!thread_pause) {
 		thread_pause = !thread_pause;
 		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"播放");
 	}
-	for (int i = 0; i < 3; i++) {
+	if (timeclips.size() % 2 == 1) {
+		con_add = false;
+		timeclips.pop_back();
+		m_slider_seek.timepos.pop_back();
+
+		CRect rect;
+		//CWnd* pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+		m_slider_seek.GetClientRect(&rect);
+		m_slider_seek.InvalidateRect(rect);
+		m_slider_seek.UpdateWindow();
+	}
+	timeclips_size = timeclips.size() / 2;
+	CString desceibe;
+	for (int i = 0; i < timeclips_size; i++) {
 		clipindex++;
 		CString str;
 		str.Format(_T("%d"), clipindex);
-	CString outfile = strVideoFolderPath + "//"+VideoFilename_nosuffix+"_"+str+"."+suffix;
-	USES_CONVERSION;
-	char* outfilepath = W2A(outfile);
-	SplitVideo(5, 10, outfilepath);
-	}
-
+		CString clipname = VideoFilename_nosuffix + "_" + str + "." + suffix;
+		CString outfile = strVideoFolderPath + "//" + clipname;
+		CString comm;
+		int dura = timeclips[2 * i + 1] - timeclips[2 * i];
+		if (dura <= 1) {
+			AfxMessageBox(_T("视频无法切割"));
+			continue;
+		}
+			comm.Format(_T("ffmpeg -ss %d -to %d  -accurate_seek -i %s -vcodec libx264 -acodec aac -avoid_negative_ts 1 %s -y"), timeclips[2 * i], timeclips[2 * i + 1], VideoFilepath, outfile);
+			USES_CONVERSION;
+			char* outcomm = W2A(comm);
+			if (WinExec(outcomm, SW_HIDE)) {
+				desceibe.Format(_T("%s号视频片段正在切割，请耐心等待！"),str);
+				m_describe.SetWindowText(desceibe);
+				m_listbox_videoclip.AddString(clipname);
+				Sleep(600);
+			}
+			
+	}	
 	
+	m_describe.SetWindowText(_T("视频切割完毕"));
+	m_progress.ShowWindow(SW_HIDE);
+	m_progress.RedrawWindow();
 }
 
 
 void CJiaohuDlg::OnBnClickedButtonGettime()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	Graphics g(this->m_hWnd);
-	Pen p(Color(255, 0, 0, 255));
-	g.DrawLine(&p, 100, 260, 500, 260);
 	
+	if (!thread_pause) {
+	thread_pause = !thread_pause;
+	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+	}
 
+
+	if (con_add) {
+		timeclips.push_back((int)sec);
+		m_slider_pos=m_slider_seek.GetPos();
+		m_slider_seek.timepos.push_back(m_slider_pos);
+		CRect rect;
+
+		m_slider_seek.GetClientRect(&rect);
+		m_slider_seek.InvalidateRect(rect);
+		m_slider_seek.UpdateWindow();
+	timeclips_size = timeclips.size();
+	if (timeclips_size >= 2) {
+		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(1);
+		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(1);
+		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(1);
+	}
+
+
+	if (start_or_end){
+		GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("结束位置"));
+		start_or_end = !start_or_end;
+	}
+	else {
+		GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+		start_or_end = !start_or_end;
+	}
+	
+	
+	}
 }
 
 
+void CJiaohuDlg::OnBnClickedButtonDelclip()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	if (timeclips.size() % 2 == 1) {
+		timeclips.pop_back();
+		m_slider_seek.timepos.pop_back();
+	}
+
+	if (timeclips.size() < 2) {
+		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	}
+	else
+	{
+		timeclips.pop_back();
+		timeclips.pop_back();
+		m_slider_seek.timepos.pop_back();
+		m_slider_seek.timepos.pop_back();
+	}
+	if (timeclips.size() < 2) {
+		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	}
+	CRect rect;
+	//CWnd* pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+	m_slider_seek.GetClientRect(&rect);
+	m_slider_seek.InvalidateRect(rect);
+	m_slider_seek.UpdateWindow();
+}
 void CJiaohuDlg::OnDestroy()
 {
 	CDialogEx::OnDestroy();
-	GdiplusShutdown(m_pGdiToken);
+
 	// TODO: 在此处添加消息处理程序代码
+	GdiplusShutdown(m_pGdiToken);
 }
+
+
+void CJiaohuDlg::OnSize(UINT nType, int cx, int cy)
+{
+	CDialogEx::OnSize(nType, cx, cy);
+
+	// TODO: 在此处添加消息处理程序代码
+	if (!GetSafeHwnd() == NULL) {
+		CRect rect;// 获取当前窗口大小
+		for (std::list<control*>::iterator it = m_con_list.begin(); it != m_con_list.end(); it++) {
+			CWnd* pWnd = GetDlgItem((*it)->Id);//获取ID为woc的空间的句柄
+			pWnd->GetWindowRect(&rect);
+			ScreenToClient(&rect);//将控件大小转换为在对话框中的区域坐标
+			rect.left = (*it)->scale[0] * cx;
+			rect.right = (*it)->scale[1] * cx;
+			rect.top = (*it)->scale[2] * cy;
+			rect.bottom = (*it)->scale[3] * cy;
+			pWnd->MoveWindow(rect);//设置控件大小
+		}
+		GetClientRect(&m_rect);//将变化后的对话框大小设为旧大小
+	}
+}
+void CJiaohuDlg::get_control_original_proportion() {
+	HWND hwndChild = ::GetWindow(m_hWnd, GW_CHILD);
+	while (hwndChild)
+	{
+		CRect rect;//获取当前窗口的大小
+		control* tempcon = new control;
+		CWnd* pWnd = GetDlgItem(::GetDlgCtrlID(hwndChild));//获取ID为woc的空间的句柄
+		pWnd->GetWindowRect(&rect);
+		ScreenToClient(&rect);//将控件大小转换为在对话框中的区域坐标
+		tempcon->Id = ::GetDlgCtrlID(hwndChild);//获得控件的ID;
+		tempcon->scale[0] = (double)rect.left / m_rect.Width();//注意类型转换，不然保存成long型就直接为0了
+		tempcon->scale[1] = (double)rect.right / m_rect.Width();
+		tempcon->scale[2] = (double)rect.top / m_rect.Height();
+		tempcon->scale[3] = (double)rect.bottom / m_rect.Height();
+		m_con_list.push_back(tempcon);
+		hwndChild = ::GetWindow(hwndChild, GW_HWNDNEXT);
+	}
+}
+
+
+void CJiaohuDlg::OnPaint()
+{
+
+
+
+	CPaintDC dc(this); // device context for painting
+					   // TODO: 在此处添加消息处理程序代码
+					   // 不为绘图消息调用 CDialogEx::OnPaint()
+	
+	if (isexcut_black) {
+		CRect rtTop;
+		CWnd* pWnd = GetDlgItem(IDC_PICTURE_PLAY);
+		CDC* cDc = pWnd->GetDC();
+		pWnd->GetClientRect(&rtTop);
+		cDc->FillSolidRect(rtTop.left, rtTop.top, rtTop.Width(), rtTop.Height(), RGB(0, 0, 0));
+	}
+	
+}
+
+
+
+
+
+

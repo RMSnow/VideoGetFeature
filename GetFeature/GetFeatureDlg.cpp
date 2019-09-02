@@ -30,6 +30,8 @@ public:
 // 实现
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
+//	afx_msg void OnDestroy();
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -42,6 +44,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
+//	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -248,3 +251,6 @@ void CGetFeatureDlg::OnSize(UINT nType, int cx, int cy)
 		m_chachongDlg.OnSize(nType, cx, cy);
 	}
 }
+
+
+
