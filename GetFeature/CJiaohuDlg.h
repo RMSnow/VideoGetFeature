@@ -69,6 +69,27 @@ public:
 	afx_msg void OnBnClickedButtonCutvideo();
 	afx_msg void OnBnClickedButtonGettime();
 	void thread_stop();
-	afx_msg void OnDestroy();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+
+	void get_control_original_proportion();
+	CRect m_rect;
+	typedef struct Rect {
+	public:
+		int Id;
+		double scale[4];
+
+		Rect() {
+			Id = -2;
+			scale[0] = 0;
+			scale[1] = 0;
+			scale[2] = 0;
+			scale[3] = 0;
+		}
+
+		Rect(const Rect& c) {
+			*this = c;
+		}
+	}control;
+	std::list<control*> m_con_list;
 };
 int sfp_refresh_thread(void* opaque);

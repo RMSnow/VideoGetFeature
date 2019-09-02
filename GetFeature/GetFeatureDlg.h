@@ -43,4 +43,5 @@ protected:
 public:
 	afx_msg void OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult);
 	CTabCtrl m_tab;
+	afx_msg void OnSize(UINT nType, int cx, int cy);
 };

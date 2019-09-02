@@ -66,6 +66,7 @@ BEGIN_MESSAGE_MAP(CGetFeatureDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_NOTIFY(TCN_SELCHANGE, IDC_TAB1, &CGetFeatureDlg::OnTcnSelchangeTab1)
+	ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 
@@ -228,5 +229,22 @@ void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 		break;
 	default:
 		break;
+	}
+}
+
+
+void CGetFeatureDlg::OnSize(UINT nType, int cx, int cy)
+{
+	CDialogEx::OnSize(nType, cx, cy);
+
+	// TODO: 在此处添加消息处理程序代码
+	//AfxMessageBox(_T("GETF 调用OnSize"));
+	if (nType != SIZE_MINIMIZED)  //判断窗口是不是最小化了，因为窗口最小化之后 ，
+			//窗口的长和宽会变成0，当前一次变化的时就会出现除以0的错误操作
+	{
+		m_jiaohuDlg.OnSize(nType, cx, cy);
+		m_piliangDlg.OnSize(nType, cx, cy);
+		m_tezhengDlg.OnSize(nType, cx, cy);
+		m_chachongDlg.OnSize(nType, cx, cy);
 	}
 }
