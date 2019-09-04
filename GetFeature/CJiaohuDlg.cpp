@@ -61,6 +61,7 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_WM_SIZE()
 	ON_BN_CLICKED(IDC_BUTTON_DELCLIP, &CJiaohuDlg::OnBnClickedButtonDelclip)
 	ON_WM_PAINT()
+	ON_BN_CLICKED(IDC_BUTTON_FEATUREEXTRACT, &CJiaohuDlg::OnBnClickedButtonFeatureextract)
 END_MESSAGE_MAP()
 
 
@@ -210,7 +211,9 @@ UINT videoplayer(LPVOID lpParam) {
 	sec = 0;
 	last_sec = -1;
 	thread_pause = false;
+	AVFormatContext* pFmtCtx = NULL;
 	AVCodecContext* pCodecCtx = NULL;
+	AVCodec* pCodec = NULL;
 	AVStream* video_st;
 	AVFrame* pFrame = NULL;
 	AVFrame* pFrameYUV = NULL;
@@ -228,10 +231,7 @@ UINT videoplayer(LPVOID lpParam) {
 	SDL_Event event;
 	
 	//======================== 添加 ========================
-	
 
-	
-	//thread_pause = false;
 	USES_CONVERSION;
 	char* filepath = W2A(pDlg->VideoFilepath);
 
@@ -239,22 +239,22 @@ UINT videoplayer(LPVOID lpParam) {
 	av_register_all();
 	avformat_network_init();
 	//2. AVFormatContext获取
-	pDlg->pFmtCtx = avformat_alloc_context();
+	pFmtCtx = avformat_alloc_context();
 	//3. 打开文件
-	if (avformat_open_input(&(pDlg->pFmtCtx), filepath, NULL, NULL) != 0) {
+	if (avformat_open_input(&(pFmtCtx), filepath, NULL, NULL) != 0) {
 		log_s("Couldn't open input stream.\n");
 		return -1;
 	}
 	//4. 获取文件信息
-	if (avformat_find_stream_info(pDlg->pFmtCtx, NULL) < 0) {
+	if (avformat_find_stream_info(pFmtCtx, NULL) < 0) {
 		log_s("Couldn't find stream information.");
 		return -1;
 	}
 	
 	//5. 获取视频的index
 	int i = 0;
-	for (; i < pDlg->pFmtCtx->nb_streams; i++) {
-		if (pDlg->pFmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+	for (; i < pFmtCtx->nb_streams; i++) {
+		if (pFmtCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			videoIndex = i;
 			break;
 		}
@@ -264,8 +264,8 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Didn't find a video stream.");
 		return -1;
 	}
-	video_st = pDlg->pFmtCtx->streams[videoIndex];
-	alltime = (double)(pDlg->pFmtCtx->duration) / AV_TIME_BASE;//时长
+	video_st = pFmtCtx->streams[videoIndex];
+	alltime = (double)(pFmtCtx->duration) / AV_TIME_BASE;//时长
 	pDlg->m_slider_seek.alltime = alltime;
 	int secs = (int)alltime % 60;
 	int mins = (int)alltime / 60 % 60;
@@ -308,16 +308,17 @@ UINT videoplayer(LPVOID lpParam) {
 	//6. 获取解码器并打开
 	pCodecCtx = avcodec_alloc_context3(NULL);
 	
-	if (avcodec_parameters_to_context(pCodecCtx, pDlg->pFmtCtx->streams[videoIndex]->codecpar) < 0) {
+	if (avcodec_parameters_to_context(pCodecCtx, pFmtCtx->streams[videoIndex]->codecpar) < 0) {
 		log_s("Didn't parameters to contex.");
 		return -1;
 	}
 	
-	AVCodec* pCodec = avcodec_find_decoder(pCodecCtx->codec_id);
+	pCodec = avcodec_find_decoder(pCodecCtx->codec_id);
 	if (pCodec == NULL) {
 		log_s("Codec not found.");
 		return -1;
 	}
+	
 	if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {//打开解码器
 		log_s("Could not open codec.");
 		return -1;
@@ -334,11 +335,11 @@ UINT videoplayer(LPVOID lpParam) {
 
 	pPacket = av_packet_alloc();
 	log_s("--------------- File Information ----------------");
-	av_dump_format(pDlg->pFmtCtx, 0, filepath, 0);
+	av_dump_format(pFmtCtx, 0, filepath, 0);
 	log_s("-------------------------------------------------");
 	//获取SwsContext
-	pSwsCtx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt,
-		pCodecCtx->width, pCodecCtx->height, AV_PIX_FMT_YUV420P, NULL, NULL, NULL, NULL);
+	pSwsCtx = sws_getContext(pCodecCtx->width,pCodecCtx->height, pCodecCtx->pix_fmt,
+		pCodecCtx->width,pCodecCtx->height, AV_PIX_FMT_YUV420P, NULL, NULL, NULL, NULL);
 	//----------------------------------------------------------------------------------------------------------------
 	// 8. SDL相关初始化
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
@@ -360,7 +361,7 @@ UINT videoplayer(LPVOID lpParam) {
 	sdlRenderer = SDL_CreateRenderer(screen, -1, 0);
 	//IYUV: Y + U + V  (3 planes)
 	//YV12: Y + V + U  (3 planes)
-	sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, pCodecCtx->width, pCodecCtx->height);
+	sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING,pCodecCtx->width,pCodecCtx->height);
 
 	sdlRect.x = 0;
 	sdlRect.y = 0;
@@ -400,14 +401,14 @@ UINT videoplayer(LPVOID lpParam) {
 					time_base_q.num = 1;
 					time_base_q.den = AV_TIME_BASE;
 					//这里一定要注意：不单纯的是从秒转成毫秒，//seek_target = seek_target / 1000; 这样做是不对的
-					seek_target = av_rescale_q(seek_target, time_base_q, pDlg->pFmtCtx->streams[stream_index]->time_base);
+					seek_target = av_rescale_q(seek_target, time_base_q, pFmtCtx->streams[stream_index]->time_base);
 				}
-				int error = av_seek_frame(pDlg->pFmtCtx, stream_index, seek_target, seek_flags);
+				int error = av_seek_frame(pFmtCtx, stream_index, seek_target, seek_flags);
 				last_sec = -1;
 				seek_req = 0;
 			}
 
-			if (av_read_frame(pDlg->pFmtCtx, pPacket) == 0) {
+			if (av_read_frame(pFmtCtx, pPacket) == 0) {
 				if (pPacket->stream_index == videoIndex) {
 					if (avcodec_send_packet(pCodecCtx, pPacket) != 0) {//解码一帧压缩数据
 						log_s("Decode end or Error.");
@@ -967,8 +968,162 @@ void CJiaohuDlg::OnPaint()
 	
 }
 
+void SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num)
+{
+	AVPicture pPictureRGB;//RGB图片
+
+	static struct SwsContext* img_convert_ctx;
+	img_convert_ctx = sws_getContext(width, height, CodecContex->pix_fmt, width, height, \
+		AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
+	// 确认所需缓冲区大小并且分配缓冲区空间
+	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_RGB24, width, height);
+	sws_scale(img_convert_ctx, Picture->data, Picture->linesize, \
+		0, height, pPictureRGB.data, pPictureRGB.linesize);
+
+	int lineBytes = pPictureRGB.linesize[0], i = 0;
+
+	char fileName[1024] = { 0 };
+	char* bmpSavePath = "%d.bmp";
+	//time_t ltime;
+	//time(<ime);
+	//sprintf(fileName,bmpSavePath , ltime);////////////////////////////////////////////???????????????????????????
+	sprintf(fileName, bmpSavePath, num);
+
+	FILE* pDestFile = fopen(fileName, "wb");
+	BITMAPFILEHEADER btfileHeader;
+	btfileHeader.bfType = MAKEWORD(66, 77);
+	btfileHeader.bfSize = lineBytes * height;
+	btfileHeader.bfReserved1 = 0;
+	btfileHeader.bfReserved2 = 0;
+	btfileHeader.bfOffBits = 54;
+
+	BITMAPINFOHEADER bitmapinfoheader;
+	bitmapinfoheader.biSize = 40;
+	bitmapinfoheader.biWidth = width;
+	bitmapinfoheader.biHeight = height;
+	bitmapinfoheader.biPlanes = 1;
+	bitmapinfoheader.biBitCount = 24;
+	bitmapinfoheader.biCompression = BI_RGB;
+	bitmapinfoheader.biSizeImage = lineBytes * height;
+	bitmapinfoheader.biXPelsPerMeter = 0;
+	bitmapinfoheader.biYPelsPerMeter = 0;
+	bitmapinfoheader.biClrUsed = 0;
+	bitmapinfoheader.biClrImportant = 0;
+
+	fwrite(&btfileHeader, 14, 1, pDestFile);
+	fwrite(&bitmapinfoheader, 40, 1, pDestFile);
+	for (i = height - 1; i >= 0; i--)
+	{
+		fwrite(pPictureRGB.data[0] + i * lineBytes, lineBytes, 1, pDestFile);
+	}
+
+	fclose(pDestFile);
+	avpicture_free(&pPictureRGB);
+}
+
+UINT feature_extract(LPVOID lpParam) {
+	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+	AVFormatContext* fepFmtCtx = NULL;
+	AVCodecContext* fepCodecCtx = NULL;
+	AVCodec* fepCodec = NULL;
+
+	USES_CONVERSION;
+	char* sourceFile = W2A(pDlg->VideoFilepath);
+
+	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
+	av_register_all();
+
+	int ret;
+	// 打开视频文件
+	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
+		cout << " can't open file " << endl;
+		return -1;
+	}
+	// 取出文件流信息
+	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
+		cout << " can't find suitable codec parameters" << endl;
+		return -1;
+	}
+	//用于诊断 //产品中不可用
+	//dump_format(pInputFormatContext, 0, sourceFile, false);
+
+	//仅仅处理视频流
+	//只简单处理我们发现的第一个视频流
+	//  寻找第一个视频流
+	int videoIndex = -1;
+	for (int i = 0; i < fepFmtCtx->nb_streams; i++) {
+		if (fepFmtCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+			videoIndex = i;
+			break;
+		}
+	}
+	if (-1 == videoIndex) {
+		cout << " can't find video stream !" << endl;
+		return -1;
+	}
+	// 得到视频流编码上下文的指针
+	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+	//  寻找视频流的解码器
+	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
+
+	if (NULL == fepCodec) {
+		cout << "can't decode " << endl;
+		return -1;
+	}
+
+
+
+	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
+	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
+	//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+	if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+		fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
+	}
+
+
+	//打开解码器
+	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
+		cout << "decode error" << endl;
+		return -1;
+	}
+	int videoHeight;
+	int videoWidth;
+	videoWidth = fepCodecCtx->width;
+	videoHeight = fepCodecCtx->height;
+
+	AVPacket InPack;
+	int len = 0;
+	AVFrame* OutFrame;
+	OutFrame = av_frame_alloc();
+	int nComplete = 0;
+
+	int nFrame = 0;
+	AVRational avRation = fepCodecCtx->time_base;
+	float frameRate = (float)avRation.den / avRation.num;
+	//av_seek_frame(pInputFormatContext,0);
+	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
+		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
+
+		//判断是否是关键帧
+		if (nComplete > 0 && OutFrame->key_frame) {
+			//解码一帧成功
+			SaveBmp(fepCodecCtx, OutFrame, videoWidth, videoHeight, nFrame);
+			nFrame++;
+		}
+	}
+	cout << " save frame number: " << nFrame << endl;
+	avcodec_close(fepCodecCtx);
+	av_free(fepFmtCtx);
+}
 
 
 
 
 
+
+
+void CJiaohuDlg::OnBnClickedButtonFeatureextract()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	AfxBeginThread(feature_extract, this);
+}

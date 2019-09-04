@@ -36,7 +36,7 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-	AVFormatContext* pFmtCtx = NULL;
+
 	CString strFeatureFolderPath;//特征保存文件夹路径
 	CString VideoFilepath;//视频文件的路径
 	CString strVideoFolderPath;//视频文件所属文件夹的路径
@@ -98,5 +98,6 @@ public:
 	afx_msg void OnBnClickedButtonDelclip();
 	afx_msg void OnPaint();
 
+	afx_msg void OnBnClickedButtonFeatureextract();
 };
 int sfp_refresh_thread(void* opaque);
