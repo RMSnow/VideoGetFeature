@@ -5,6 +5,8 @@
 #include "GetFeature.h"
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
+#include "MP4Muxer.h"
+#include "SaveBmp.h"
 
 //*************************** ffmpeg ***************************
 #include <vector>
@@ -810,15 +812,16 @@ void CJiaohuDlg::OnBnClickedButtonCutvideo()
 			AfxMessageBox(_T("视频无法切割"));
 			continue;
 		}
-			comm.Format(_T("ffmpeg -ss %d -to %d  -accurate_seek -i %s -vcodec libx264 -acodec aac -avoid_negative_ts 1 %s -y"), timeclips[2 * i], timeclips[2 * i + 1], VideoFilepath, outfile);
-			USES_CONVERSION;
-			char* outcomm = W2A(comm);
-			if (WinExec(outcomm, SW_HIDE)) {
-				desceibe.Format(_T("%s号视频片段正在切割，请耐心等待！"),str);
-				m_describe.SetWindowText(desceibe);
-				m_listbox_videoclip.AddString(clipname);
-				Sleep(600);
-			}
+
+		comm.Format(_T("ffmpeg -ss %d -to %d  -accurate_seek -i %s -vcodec libx264 -acodec aac -avoid_negative_ts 1 %s -y"), timeclips[2 * i], timeclips[2 * i + 1], VideoFilepath, outfile);
+		USES_CONVERSION;
+		char* outcomm = W2A(comm);
+		if (WinExec(outcomm, SW_HIDE)) {
+			desceibe.Format(_T("%s号视频片段正在切割，请耐心等待！"),str);
+			m_describe.SetWindowText(desceibe);
+			m_listbox_videoclip.AddString(clipname);
+			Sleep(600);
+		}
 			
 	}	
 	
@@ -968,58 +971,139 @@ void CJiaohuDlg::OnPaint()
 	
 }
 
-void SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num)
-{
-	AVPicture pPictureRGB;//RGB图片
+//UINT feature_extract(LPVOID lpParam) {
+//	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+//	AVFormatContext* fepFmtCtx = NULL;
+//	AVCodecContext* fepCodecCtx = NULL;
+//	AVCodec* fepCodec = NULL;
+//	char* outputFile = "D:\\WJC\\Desktop\\VideoGetFeature_wjc\\GetFeature\\test.mp4";
+//	int ret;
+//
+//	USES_CONVERSION;
+//	char* sourceFile = W2A(pDlg->VideoFilepath);
+//
+//	// 将提取特征按钮disable
+//	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
+//
+//	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
+//	av_register_all();
+//
+//	// 打开视频文件
+//	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
+//		log_s("Can't open file when feature extracting");
+//		return -1;
+//	}
+//	// 取出文件流信息
+//	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
+//		log_s("Can't find suitable codec parameters when feature extracting");
+//		return -1;
+//	}
+//
+//	//仅仅处理视频流
+//	//只简单处理我们发现的第一个视频流
+//	//  寻找第一个视频流
+//	int videoIndex = -1;
+//	for (int i = 0; i < fepFmtCtx->nb_streams; i++) {
+//		if (fepFmtCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+//			videoIndex = i;
+//			break;
+//		}
+//	}
+//	if (-1 == videoIndex) {
+//		log_s("Can't find video stream when feature extracting");
+//		return -1;
+//	}
+//
+//	// 输出文件信息
+//	av_dump_format(fepFmtCtx, 0, sourceFile, 0);
+//
+//	//实例化混流器
+//	MP4Muxer* muxer = new MP4Muxer();
+//	if (!muxer->Start(outputFile)) {
+//		delete muxer;
+//		log_s("create muxer failed");
+//		return -1;
+//	}
+//
+//
+//	// 得到视频流编码上下文的指针
+//	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+//	//  寻找视频流的解码器
+//	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
+//
+//	if (NULL == fepCodec) {
+//		log_s("Can't decode when feature extracting");
+//		return -1;
+//	}
+//
+//	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
+//	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
+//	//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+//	if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+//		fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
+//	}
+//
+//
+//	//打开解码器
+//	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
+//		log_s("Decode end or Error when feature extracting.");
+//		return -1;
+//	}
+//	int videoHeight;
+//	int videoWidth;
+//	videoWidth = fepCodecCtx->width;
+//	videoHeight = fepCodecCtx->height;
+//
+//	AVPacket InPack;
+//	int len = 0;
+//	AVFrame* OutFrame;
+//	OutFrame = av_frame_alloc();
+//	int nComplete = 0;
+//
+//	int nFrame = 0;
+//	AVRational avRation = fepCodecCtx->time_base;
+//	float frameRate = (float)avRation.den / avRation.num;
+//	//av_seek_frame(pInputFormatContext,0);
+//	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
+//		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
+//
+//		//判断是否是关键帧
+//		if (nComplete > 0 && OutFrame->key_frame) {
+//			//解码一帧成功
+//			muxer->AppendVideo(OutFrame);//20190912修改至此
+//			//SaveBmp(fepCodecCtx, OutFrame, videoWidth, videoHeight, nFrame);
+//			nFrame++;
+//		}
+//	}
+//
+//	//cout << " save frame number: " << nFrame << endl;
+//	avcodec_close(fepCodecCtx);
+//	av_free(fepFmtCtx);
+//
+//	CString comm;
+//	CString del;
+//	//CString outfile = (CString)"D:\WJC\Desktop\VideoGetFeature_wjc\GetFeatur\test.mp4";
+//	//comm.Format(_T("ffmpeg -f image2 -i D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\%d.bmp  -vcodec libx264 -r 10  D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\test.flv"));
+//	//USES_CONVERSION;
+//	//char* outcomm = W2A(comm);
+//	//char* outcomm = "ffmpeg -f image2 -i D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\/%d.bmp  -vcodec libx264 -r 10  D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\test.flv";
+//	//if (WinExec(outcomm,SW_HIDE)) {
+//	//	Sleep(600);
+//	//}
+//
+//	del.Format(_T("del/q  D:\\WJC\\Desktop\\VideoGetFeature_wjc\\GetFeature\\*.bmp"));
+//	char* outcomm = W2A(del);
+//	if (WinExec(outcomm, SW_SHOW)) {
+//		AfxMessageBox(_T("del!"));
+//		Sleep(600);
+//	}
+//
+//
+//
+//
+//	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
+//}
 
-	static struct SwsContext* img_convert_ctx;
-	img_convert_ctx = sws_getContext(width, height, CodecContex->pix_fmt, width, height, \
-		AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
-	// 确认所需缓冲区大小并且分配缓冲区空间
-	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_RGB24, width, height);
-	sws_scale(img_convert_ctx, Picture->data, Picture->linesize, \
-		0, height, pPictureRGB.data, pPictureRGB.linesize);
-
-	int lineBytes = pPictureRGB.linesize[0], i = 0;
-
-	char fileName[1024] = { 0 };
-	char* bmpSavePath = "%d.bmp";
-	//time_t ltime;
-	//time(<ime);
-	//sprintf(fileName,bmpSavePath , ltime);////////////////////////////////////////////???????????????????????????
-	sprintf(fileName, bmpSavePath, num);
-
-	FILE* pDestFile = fopen(fileName, "wb");
-	BITMAPFILEHEADER btfileHeader;
-	btfileHeader.bfType = MAKEWORD(66, 77);
-	btfileHeader.bfSize = lineBytes * height;
-	btfileHeader.bfReserved1 = 0;
-	btfileHeader.bfReserved2 = 0;
-	btfileHeader.bfOffBits = 54;
-
-	BITMAPINFOHEADER bitmapinfoheader;
-	bitmapinfoheader.biSize = 40;
-	bitmapinfoheader.biWidth = width;
-	bitmapinfoheader.biHeight = height;
-	bitmapinfoheader.biPlanes = 1;
-	bitmapinfoheader.biBitCount = 24;
-	bitmapinfoheader.biCompression = BI_RGB;
-	bitmapinfoheader.biSizeImage = lineBytes * height;
-	bitmapinfoheader.biXPelsPerMeter = 0;
-	bitmapinfoheader.biYPelsPerMeter = 0;
-	bitmapinfoheader.biClrUsed = 0;
-	bitmapinfoheader.biClrImportant = 0;
-
-	fwrite(&btfileHeader, 14, 1, pDestFile);
-	fwrite(&bitmapinfoheader, 40, 1, pDestFile);
-	for (i = height - 1; i >= 0; i--)
-	{
-		fwrite(pPictureRGB.data[0] + i * lineBytes, lineBytes, 1, pDestFile);
-	}
-
-	fclose(pDestFile);
-	avpicture_free(&pPictureRGB);
-}
 
 UINT feature_extract(LPVOID lpParam) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
@@ -1030,22 +1114,23 @@ UINT feature_extract(LPVOID lpParam) {
 	USES_CONVERSION;
 	char* sourceFile = W2A(pDlg->VideoFilepath);
 
+	// 将提取特征按钮disable
+	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
+
 	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 	av_register_all();
 
 	int ret;
 	// 打开视频文件
 	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
-		cout << " can't open file " << endl;
+		log_s("Can't open file when feature extracting");
 		return -1;
 	}
 	// 取出文件流信息
 	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
-		cout << " can't find suitable codec parameters" << endl;
+		log_s("Can't find suitable codec parameters when feature extracting");
 		return -1;
 	}
-	//用于诊断 //产品中不可用
-	//dump_format(pInputFormatContext, 0, sourceFile, false);
 
 	//仅仅处理视频流
 	//只简单处理我们发现的第一个视频流
@@ -1058,7 +1143,7 @@ UINT feature_extract(LPVOID lpParam) {
 		}
 	}
 	if (-1 == videoIndex) {
-		cout << " can't find video stream !" << endl;
+		log_s("Can't find video stream when feature extracting");
 		return -1;
 	}
 	// 得到视频流编码上下文的指针
@@ -1067,11 +1152,9 @@ UINT feature_extract(LPVOID lpParam) {
 	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
 
 	if (NULL == fepCodec) {
-		cout << "can't decode " << endl;
+		log_s("Can't decode when feature extracting");
 		return -1;
 	}
-
-
 
 	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
 	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
@@ -1081,9 +1164,9 @@ UINT feature_extract(LPVOID lpParam) {
 	}
 
 
-	//打开解码器
+	//打开解码器 
 	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
-		cout << "decode error" << endl;
+		log_s("Decode end or Error when feature extracting.");
 		return -1;
 	}
 	int videoHeight;
@@ -1111,12 +1194,28 @@ UINT feature_extract(LPVOID lpParam) {
 			nFrame++;
 		}
 	}
-	cout << " save frame number: " << nFrame << endl;
+
 	avcodec_close(fepCodecCtx);
 	av_free(fepFmtCtx);
+
+	CString comm;
+	CString outfile = (CString)"D:\WJC\Desktop\VideoGetFeature_wjc\GetFeatur\test.mp4";
+	comm.Format(_T("ffmpeg -f image2 -i D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\%d.bmp  -vcodec libx264 -r 10  D:\WJC\Desktop\VideoGetFeature_wjc\GetFeature\test.flv"));
+	char* outcomm = W2A(comm);
+	//char* outcomm = "ffmpeg -f image2 -i D:\\WJC\\Desktop\\VideoGetFeature_wjc\\GetFeature\\%d.bmp  -vcodec libx264 -r 10  D:\\WJC\\Desktop\\VideoGetFeature_wjc\\GetFeature\\test.flv";
+	if (WinExec(outcomm,SW_HIDE)) {
+		Sleep(600);
+	}
+
+	// 删除中间保存的bitmap
+	CString bmppath_del = pDlg->strVideoFolderPath + "\\*.bmp";
+	CString comm_del;
+	comm_del.Format(_T("cmd.exe /k del %s"), bmppath_del);
+	char* outcomm_del = W2A(comm_del);
+	WinExec(outcomm_del, SW_HIDE);
+
+	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
 }
-
-
 
 
 

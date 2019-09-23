@@ -5,8 +5,14 @@
 #include "GetFeature.h"
 #include "CTezhengDlg.h"
 #include "afxdialogex.h"
+#include "SaveBmp.h"
+
+#include <vector>
+#include <iostream>
+using namespace std;
 
 
+#pragma comment(lib,"gdiplus.lib")
 // CTezhengDlg 对话框
 
 IMPLEMENT_DYNAMIC(CTezhengDlg, CDialogEx)
@@ -29,6 +35,8 @@ void CTezhengDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CTezhengDlg, CDialogEx)
 	ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_BUTTON_OPEN, &CTezhengDlg::OnBnClickedButtonOpen)
+	ON_NOTIFY_REFLECT(NM_CUSTOMDRAW, &CTezhengDlg::OnCustomDrawList)
 END_MESSAGE_MAP()
 
 
@@ -83,5 +91,233 @@ void CTezhengDlg::get_control_original_proportion() {
 		tempcon->scale[3] = (double)rect.bottom / m_rect.Height();
 		m_con_list.push_back(tempcon);
 		hwndChild = ::GetWindow(hwndChild, GW_HWNDNEXT);
+	}
+}
+
+
+UINT getFrame(LPVOID lpParam) {
+	CTezhengDlg* pDlg = (CTezhengDlg*)lpParam;
+	AVFormatContext* fepFmtCtx = NULL;
+	AVCodecContext* fepCodecCtx = NULL;
+	AVCodec* fepCodec = NULL;
+
+	USES_CONVERSION;
+	char* sourceFile = W2A(pDlg->VideoFilepath);
+
+	av_register_all();
+
+	int ret;
+	// 打开视频文件
+	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
+		return -1;
+	}
+	// 取出文件流信息
+	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
+		return -1;
+	}
+
+	//仅仅处理视频流
+	//只简单处理我们发现的第一个视频流
+	//  寻找第一个视频流
+	int videoIndex = -1;
+	for (int i = 0; i < fepFmtCtx->nb_streams; i++) {
+		if (fepFmtCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+			videoIndex = i;
+			break;
+		}
+	}
+	if (-1 == videoIndex) {
+		return -1;
+	}
+	// 得到视频流编码上下文的指针
+	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+	//  寻找视频流的解码器
+	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
+
+	if (NULL == fepCodec) {
+		return -1;
+	}
+
+	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
+	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
+	//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+	if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+		fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
+	}
+
+
+	//打开解码器 
+	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
+		return -1;
+	}
+	int videoHeight;
+	int videoWidth;
+	videoWidth = fepCodecCtx->width;
+	videoHeight = fepCodecCtx->height;
+
+	AVPacket InPack;
+	int len = 0;
+	AVFrame* OutFrame;
+	OutFrame = av_frame_alloc();
+	int nComplete = 0;
+
+	int nFrame = 0;
+	AVRational avRation = fepCodecCtx->time_base;
+	float frameRate = (float)avRation.den / avRation.num;
+	//av_seek_frame(pInputFormatContext,0);
+	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
+		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
+
+		//解码一帧成功
+		SaveBmp(fepCodecCtx, OutFrame, videoWidth, videoHeight, nFrame);
+		nFrame++;
+	}
+
+	avcodec_close(fepCodecCtx);
+	av_free(fepFmtCtx);
+
+	// 删除中间保存的bitmap
+	//CString bmppath_del = pDlg->strVideoFolderPath + "\\*.bmp";
+	//CString comm_del;
+	//comm_del.Format(_T("cmd.exe /k del %s"), bmppath_del);
+	//char* outcomm_del = W2A(comm_del);
+	//WinExec(outcomm_del, SW_HIDE);
+}
+
+void CTezhengDlg::OnCustomDrawList(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NMLVCUSTOMDRAW* pLVCD = reinterpret_cast<NMLVCUSTOMDRAW*>(pNMHDR);
+
+	// Take the default processing unless we set this to something else below.
+	*pResult = CDRF_DODEFAULT;
+
+	// First thing - check the draw stage. If it's the control's prepaint
+	// stage, then tell Windows we want messages for every item.
+
+	if (CDDS_PREPAINT == pLVCD->nmcd.dwDrawStage)
+	{
+		*pResult = CDRF_NOTIFYITEMDRAW;
+	}
+	else if (CDDS_ITEMPREPAINT == pLVCD->nmcd.dwDrawStage)
+	{
+		LVITEM rItem;
+		int nItem = static_cast<int>(pLVCD->nmcd.dwItemSpec);
+		CDC* pDC = CDC::FromHandle(pLVCD->nmcd.hdc);
+		COLORREF crBkgnd;
+		BOOL bListHasFocus;
+
+		CRect rcItem;
+		CRect rcText;
+		CString sText;
+		UINT uFormat;
+
+		bListHasFocus = (this->GetSafeHwnd() == ::GetFocus());
+		//get the image index and selected state of the item being draw
+		ZeroMemory(&rItem, sizeof(LVITEM));
+		rItem.mask = LVIF_IMAGE | LVIF_STATE;
+		rItem.iItem = nItem;
+		rItem.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
+		GetListCtrl().GetItem(&rItem);
+		//draw the select background
+		GetListCtrl().GetItemRect(nItem, &rcItem, LVIR_BOUNDS);
+		int nBoundsWidth = rcItem.Width();
+
+		if (rItem.state & LVIS_SELECTED)//when selected draw the Frameline
+		{
+			Graphics g(pDC->m_hDC);
+			Pen pen(Color(255, 255, 0, 0), 2);
+			g.DrawRectangle(&pen, rcItem.left, rcItem.top, rcItem.Width(), rcItem.Height());
+
+		}
+		else
+		{
+			Graphics g(pDC->m_hDC);
+			Pen pen(Color(255, 221, 224, 231), 2);
+			g.DrawRectangle(&pen, rcItem.left, rcItem.top, rcItem.Width(), rcItem.Height());
+		}
+		//draw the icon ,delete the orginal blue background
+		uFormat = ILD_TRANSPARENT;
+		if ((rItem.state & LVIS_SELECTED) && bListHasFocus)
+		{
+			// uFormat|=ILD_FOCUS;
+		}
+
+		//get the rect that holds the item's icons
+		CImageList* pImageList = GetListCtrl().GetImageList(LVSIL_NORMAL);
+		if (pImageList)
+		{
+			IMAGEINFO ii;
+			pImageList->GetImageInfo(rItem.iImage, &ii);
+			pImageList->Draw(pDC, rItem.iImage, CPoint(rcItem.left + (nBoundsWidth -
+				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 2), uFormat);
+
+		}
+
+		GetListCtrl().GetItemRect(nItem, &rcItem, LVIR_LABEL);//set the title of the iamge
+
+		 // Draw the background of the list item. Colors are selected
+		   // according to the item 's state.
+		//设置字体颜色
+		if (rItem.state & LVIS_SELECTED)
+		{
+			if (bListHasFocus)
+			{
+				crBkgnd = RGB(122, 122, 122);
+				pDC->SetTextColor(crBkgnd);
+			}
+			else
+			{
+				crBkgnd = RGB(122, 122, 122);
+				pDC->SetTextColor(crBkgnd);
+			}
+		}
+		else
+		{
+			crBkgnd = RGB(122, 122, 122);
+			pDC->SetTextColor(crBkgnd);
+		}
+
+		// Draw the background & prep the DC for the text drawing. Note
+		// that the entire item RECT is filled in, so this emulates the full-
+		// row selection style of normal lists.
+		rcItem.OffsetRect(0, -2);
+
+		//      pDC->FillSolidRect(rcItem, crBkgnd);
+		pDC->SetBkMode(TRANSPARENT);
+
+		// Tweak the rect a bit for nicer-looking text alignment.
+		rcText = rcItem;
+		// Draw the text.
+		sText = GetListCtrl().GetItemText(nItem, 0);
+
+		pDC->DrawText(sText, CRect::CRect(rcText.left, rcText.top - 3, rcText.right, rcText.bottom), DT_VCENTER | DT_CENTER);
+
+		// Draw a focus rect around the item if necessary.
+		if (bListHasFocus && (rItem.state & LVIS_FOCUSED))
+		{
+			//           pDC->DrawFocusRect(rcItem);
+		}
+
+		*pResult = CDRF_SKIPDEFAULT;
+}
+
+void CTezhengDlg::OnBnClickedButtonOpen()
+{
+	// TODO: 在此添加控件通知处理程序代码	
+
+	//设置过滤器
+	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
+
+	// 构造打开文件对话框   
+	CFileDialog fileDlg(TRUE, NULL, NULL, 0, szFilter, this);
+
+	// 显示打开文件对话框   
+	if (IDOK == fileDlg.DoModal())
+	{
+		strVideoFolderPath = fileDlg.GetFolderPath();
+		VideoFilepath = fileDlg.GetPathName();
+
+		Sleep(300);
+		AfxBeginThread(getFrame, this);
 	}
 }

@@ -1257,7 +1257,7 @@
 #define WM_PENWINLAST                   0x038F
 #define WM_DDE_FIRST                    0x03E0
 #define IDC_TAB1                        1000
-#define IDC_BUTTON1                     1001
+#define IDC_BUTTON_FEATUREEXTRACT       1001
 #define IDC_SLIDER_SEEK                 1011
 #define IDC_BUTTON_PLAY                 1012
 #define IDC_BUTTON_GETTIME              1013
