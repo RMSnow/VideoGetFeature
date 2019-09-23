@@ -1257,11 +1257,14 @@
 #define WM_PENWINLAST                   0x038F
 #define WM_DDE_FIRST                    0x03E0
 #define IDC_TAB1                        1000
-#define IDC_BUTTON1                     1001
+#define IDC_BUTTON_FEATUREEXTRACT       1001
+#define IDC_LIST1                       1007
 #define IDC_SLIDER_SEEK                 1011
 #define IDC_BUTTON_PLAY                 1012
 #define IDC_BUTTON_GETTIME              1013
 #define IDC_BUTTON_CUTVIDEO             1015
+#define IDC_BUTTON_CLIPEXT              1016
+#define IDC_BUTTON_DELEFRAME            1021
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1280,15 +1283,18 @@
 #define _WIN32_IE_IE401                 0x0401
 #define psh2                            0x0401
 #define psh3                            0x0402
+#define IDC_LIST_FRAMES                 1026
 #define psh4                            0x0403
 #define IDC_LIST_VIDEOCLIP              1027
 #define psh5                            0x0404
+#define IDC_BUTTON_DELCLIP              1028
 #define psh6                            0x0405
 #define psh7                            0x0406
 #define IDC_PICTURE_PLAY                1030
 #define psh8                            0x0407
 #define psh9                            0x0408
 #define psh10                           0x0409
+#define IDC_BUTTON_SAVE                 1033
 #define IDC_EDIT_FEATURE                1034
 #define psh11                           0x040a
 #define psh12                           0x040b
@@ -1307,6 +1313,7 @@
 #define chx6                            0x0415
 #define IDC_TEXT_TIMELENGTH             1045
 #define chx7                            0x0416
+#define IDC_PROGRESS                    1046
 #define IDC_BUTTON_OPEN                 1047
 #define chx8                            0x0417
 #define chx9                            0x0418
@@ -1324,6 +1331,7 @@
 #define rad2                            0x0421
 #define rad3                            0x0422
 #define rad4                            0x0423
+#define IDC_COMBOX_FEATURE              1059
 #define rad5                            0x0424
 #define rad6                            0x0425
 #define rad7                            0x0426
@@ -1332,6 +1340,7 @@
 #define rad10                           0x0429
 #define rad11                           0x042a
 #define rad12                           0x042b
+#define IDC_TEXT_DESCRIBE               1067
 #define rad13                           0x042c
 #define rad14                           0x042d
 #define rad15                           0x042e
@@ -1382,6 +1391,7 @@
 #define stc28                           0x045b
 #define stc29                           0x045c
 #define stc30                           0x045d
+#define IDC_BUTTON_QUICK                1117
 #define stc31                           0x045e
 #define stc32                           0x045f
 #define lst1                            0x0460
@@ -1632,7 +1642,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1007
+#define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
