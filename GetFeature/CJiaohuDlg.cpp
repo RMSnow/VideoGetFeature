@@ -5,7 +5,6 @@
 #include "GetFeature.h"
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
-#include "MP4Muxer.h"
 #include "SaveBmp.h"
 
 //*************************** ffmpeg ***************************
@@ -1833,23 +1832,6 @@ void CJiaohuDlg::OnBnClickedButtonSave()
 	// TODO: 在此添加控件通知处理程序代码
 	save_newvideo();
 }
-
-	// 删除中间保存的bitmap
-	CString bmppath_del = pDlg->strVideoFolderPath + "\\*.bmp";
-	CString comm_del;
-	comm_del.Format(_T("cmd.exe /k del %s"), bmppath_del);
-	char* outcomm_del = W2A(comm_del);
-	WinExec(outcomm_del, SW_HIDE);
-
-	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
-}
-
-
-
-
-
-
-
 
 
 

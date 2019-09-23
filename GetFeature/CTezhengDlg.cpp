@@ -138,9 +138,7 @@ UINT getFrame(LPVOID lpParam) {
 		return -1;
 	}
 
-	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
-	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
-	//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中，这里，我们告知解码器我们可以处理bit流。
 	if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
 		fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
 	}
@@ -186,119 +184,7 @@ UINT getFrame(LPVOID lpParam) {
 
 void CTezhengDlg::OnCustomDrawList(NMHDR* pNMHDR, LRESULT* pResult)
 {
-	NMLVCUSTOMDRAW* pLVCD = reinterpret_cast<NMLVCUSTOMDRAW*>(pNMHDR);
-
-	// Take the default processing unless we set this to something else below.
-	*pResult = CDRF_DODEFAULT;
-
-	// First thing - check the draw stage. If it's the control's prepaint
-	// stage, then tell Windows we want messages for every item.
-
-	if (CDDS_PREPAINT == pLVCD->nmcd.dwDrawStage)
-	{
-		*pResult = CDRF_NOTIFYITEMDRAW;
-	}
-	else if (CDDS_ITEMPREPAINT == pLVCD->nmcd.dwDrawStage)
-	{
-		LVITEM rItem;
-		int nItem = static_cast<int>(pLVCD->nmcd.dwItemSpec);
-		CDC* pDC = CDC::FromHandle(pLVCD->nmcd.hdc);
-		COLORREF crBkgnd;
-		BOOL bListHasFocus;
-
-		CRect rcItem;
-		CRect rcText;
-		CString sText;
-		UINT uFormat;
-
-		bListHasFocus = (this->GetSafeHwnd() == ::GetFocus());
-		//get the image index and selected state of the item being draw
-		ZeroMemory(&rItem, sizeof(LVITEM));
-		rItem.mask = LVIF_IMAGE | LVIF_STATE;
-		rItem.iItem = nItem;
-		rItem.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
-		GetListCtrl().GetItem(&rItem);
-		//draw the select background
-		GetListCtrl().GetItemRect(nItem, &rcItem, LVIR_BOUNDS);
-		int nBoundsWidth = rcItem.Width();
-
-		if (rItem.state & LVIS_SELECTED)//when selected draw the Frameline
-		{
-			Graphics g(pDC->m_hDC);
-			Pen pen(Color(255, 255, 0, 0), 2);
-			g.DrawRectangle(&pen, rcItem.left, rcItem.top, rcItem.Width(), rcItem.Height());
-
-		}
-		else
-		{
-			Graphics g(pDC->m_hDC);
-			Pen pen(Color(255, 221, 224, 231), 2);
-			g.DrawRectangle(&pen, rcItem.left, rcItem.top, rcItem.Width(), rcItem.Height());
-		}
-		//draw the icon ,delete the orginal blue background
-		uFormat = ILD_TRANSPARENT;
-		if ((rItem.state & LVIS_SELECTED) && bListHasFocus)
-		{
-			// uFormat|=ILD_FOCUS;
-		}
-
-		//get the rect that holds the item's icons
-		CImageList* pImageList = GetListCtrl().GetImageList(LVSIL_NORMAL);
-		if (pImageList)
-		{
-			IMAGEINFO ii;
-			pImageList->GetImageInfo(rItem.iImage, &ii);
-			pImageList->Draw(pDC, rItem.iImage, CPoint(rcItem.left + (nBoundsWidth -
-				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 2), uFormat);
-
-		}
-
-		GetListCtrl().GetItemRect(nItem, &rcItem, LVIR_LABEL);//set the title of the iamge
-
-		 // Draw the background of the list item. Colors are selected
-		   // according to the item 's state.
-		//设置字体颜色
-		if (rItem.state & LVIS_SELECTED)
-		{
-			if (bListHasFocus)
-			{
-				crBkgnd = RGB(122, 122, 122);
-				pDC->SetTextColor(crBkgnd);
-			}
-			else
-			{
-				crBkgnd = RGB(122, 122, 122);
-				pDC->SetTextColor(crBkgnd);
-			}
-		}
-		else
-		{
-			crBkgnd = RGB(122, 122, 122);
-			pDC->SetTextColor(crBkgnd);
-		}
-
-		// Draw the background & prep the DC for the text drawing. Note
-		// that the entire item RECT is filled in, so this emulates the full-
-		// row selection style of normal lists.
-		rcItem.OffsetRect(0, -2);
-
-		//      pDC->FillSolidRect(rcItem, crBkgnd);
-		pDC->SetBkMode(TRANSPARENT);
-
-		// Tweak the rect a bit for nicer-looking text alignment.
-		rcText = rcItem;
-		// Draw the text.
-		sText = GetListCtrl().GetItemText(nItem, 0);
-
-		pDC->DrawText(sText, CRect::CRect(rcText.left, rcText.top - 3, rcText.right, rcText.bottom), DT_VCENTER | DT_CENTER);
-
-		// Draw a focus rect around the item if necessary.
-		if (bListHasFocus && (rItem.state & LVIS_FOCUSED))
-		{
-			//           pDC->DrawFocusRect(rcItem);
-		}
-
-		*pResult = CDRF_SKIPDEFAULT;
+	
 }
 
 void CTezhengDlg::OnBnClickedButtonOpen()
