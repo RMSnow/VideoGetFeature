@@ -9,7 +9,7 @@ using namespace Gdiplus;
 //Refresh Event
 #define SFM_REFRESH_EVENT     (SDL_USEREVENT + 1)
 #define SFM_BREAK_EVENT       (SDL_USEREVENT + 2)
-
+#define SFM_SHOWPICTURE_EVENT       (SDL_USEREVENT + 3)
 extern "C" {
 #include <libavformat/avformat.h>   
 #include <libavcodec/avcodec.h>   
@@ -72,9 +72,12 @@ public:
 	afx_msg void OnBnClickedButtonCutvideo();
 	afx_msg void OnBnClickedButtonGettime();
 	void thread_stop();
+	int save_newvideo();
+	int get_allframes();
 	afx_msg void OnDestroy();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	void get_control_original_proportion();
+	void SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num);
 	CRect m_rect;
 	typedef struct Rect {
 	public:
@@ -97,7 +100,13 @@ public:
 
 	afx_msg void OnBnClickedButtonDelclip();
 	afx_msg void OnPaint();
-
 	afx_msg void OnBnClickedButtonFeatureextract();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	CComboBox m_combox_feature;
+	CListBox m_listbox_frame;
+	afx_msg void OnLbnSelchangeListFrames();
+	afx_msg void OnBnClickedButtonDeleframe();
+	afx_msg void OnBnClickedButtonSave();
+	afx_msg void OnBnClickedButtonQuick();
 };
 int sfp_refresh_thread(void* opaque);

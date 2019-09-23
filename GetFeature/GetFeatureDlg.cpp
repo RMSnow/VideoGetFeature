@@ -45,6 +45,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 //	ON_WM_DESTROY()
+
 END_MESSAGE_MAP()
 
 
@@ -110,7 +111,7 @@ BOOL CGetFeatureDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	CRect tabRect;   // 标签控件客户区的位置和大小   
+	
 
 	m_tab.InsertItem(0, _T("交互提取"));         
 	m_tab.InsertItem(1, _T("批量提取"));
@@ -194,7 +195,7 @@ void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 	// TODO: 在此添加控件通知处理程序代码
 	*pResult = 0;
 
-	CRect tabRect;    // 标签控件客户区的Rect   
+	//CRect tabRect;    // 标签控件客户区的Rect   
 
 	// 获取标签控件客户区Rect，并对其调整，以适合放置标签页   
 	m_tab.GetClientRect(&tabRect);
@@ -251,6 +252,13 @@ void CGetFeatureDlg::OnSize(UINT nType, int cx, int cy)
 		m_chachongDlg.OnSize(nType, cx, cy);
 	}
 }
-
-
+void CGetFeatureDlg::change() {
+	m_tab.SetCurSel(2);
+	m_tab.GetClientRect(&tabRect);
+	tabRect.top += 25;
+	m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+	m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+	m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+	m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+}
 

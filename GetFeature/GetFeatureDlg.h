@@ -41,7 +41,9 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
+	void change();
 	afx_msg void OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult);
 	CTabCtrl m_tab;
+	CRect tabRect;   // 标签控件客户区的位置和大小   
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 };
