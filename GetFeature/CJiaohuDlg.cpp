@@ -5,17 +5,10 @@
 #include "GetFeature.h"
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
-
-//*************************** ffmpeg ***************************
+#include<atlconv.h>
 #include <vector>
-#include <iostream>
-using namespace std;
-
-
+#include "GetFeatureDlg.h"
 #pragma comment(lib,"gdiplus.lib")
-// LNK2019	无法解析的外部符号 SDL_main，该符号在函数 main_utf8 中被引用
-
-//**************************************************************
 
 // CJiaohuDlg 对话框
 
@@ -41,6 +34,8 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SLIDER_SEEK, m_slider_seek);
 	DDX_Control(pDX, IDC_TEXT_DESCRIBE, m_describe);
 	DDX_Control(pDX, IDC_PROGRESS, m_progress);
+	DDX_Control(pDX, IDC_COMBOX_FEATURE, m_combox_feature);
+	DDX_Control(pDX, IDC_LIST_FRAMES, m_listbox_frame);
 }
 
 
@@ -62,6 +57,12 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_DELCLIP, &CJiaohuDlg::OnBnClickedButtonDelclip)
 	ON_WM_PAINT()
 	ON_BN_CLICKED(IDC_BUTTON_FEATUREEXTRACT, &CJiaohuDlg::OnBnClickedButtonFeatureextract)
+	ON_WM_TIMER()
+	ON_LBN_SELCHANGE(IDC_LIST_FRAMES, &CJiaohuDlg::OnLbnSelchangeListFrames)
+	ON_BN_CLICKED(IDC_BUTTON_DELEFRAME, &CJiaohuDlg::OnBnClickedButtonDeleframe)
+	ON_BN_CLICKED(IDC_BUTTON_SAVE, &CJiaohuDlg::OnBnClickedButtonSave)
+	
+	ON_BN_CLICKED(IDC_BUTTON_QUICK, &CJiaohuDlg::OnBnClickedButtonQuick)
 END_MESSAGE_MAP()
 
 
@@ -77,17 +78,18 @@ void log_s(const char* msg, int d = -1123) {
 }
 
 // 全局信号量
-
 bool isexcut_black = true;
-bool normal_stop = true;
+bool normal_stop = true;//正常播放结束
 bool thread_pause = false;
 bool thread_exit = false;
 CWinThread* play_thread = NULL;
+CWinThread* key_thread = NULL;
 int to_stop = 0;
 int videoIndex = -1;
 int is_playing_fast = 0;
 int is_playing_slowly = 0;
 int is_playing_frame = 0;
+int is_showpicture = 0;
 double alltime;
 CString time_display;
 CString total_time;
@@ -107,10 +109,15 @@ int clipindex = 0;
 bool start_or_end = true;//true为开始时间，false为结束时间
 bool con_add = true;//继续添加虚线
 vector<int> timeclips;
-vector<int>::iterator it;
+vector<AVFrame*> frames;
+vector<AVFrame*>::iterator it_frame;
+int keyframe_index;
 int timeclips_size;
 CRect rect;
 CWnd* pwnd;
+DWORD result;
+int nFrame = 0;//特征帧数
+int screen_w, screen_h;
 int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
 	rArrString.RemoveAll();
@@ -153,17 +160,67 @@ int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BO
 	} while (1);
 	return rArrString.GetSize();
 }
+void CJiaohuDlg::SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num)
+{
+	AVPicture pPictureRGB;//RGB图片
 
+	static struct SwsContext* img_convert_ctx;
+	img_convert_ctx = sws_getContext(width, height, CodecContex->pix_fmt, width, height, \
+		AV_PIX_FMT_BGR24, SWS_BICUBIC, NULL, NULL, NULL);
+	// 确认所需缓冲区大小并且分配缓冲区空间
+	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_BGR24, width, height);
+	sws_scale(img_convert_ctx, Picture->data, Picture->linesize, \
+		0, height, pPictureRGB.data, pPictureRGB.linesize);
+
+	int lineBytes = pPictureRGB.linesize[0], i = 0;
+
+	char fileName[1024] = { 0 };
+	CString bmppath = strVideoFolderPath + "//%d.bmp";
+	USES_CONVERSION;
+	char* bmpSavePath = W2A(bmppath);
+	//time_t ltime;
+	//time(<ime);
+	//sprintf(fileName,bmpSavePath , ltime);////////////////////////////////////////////???????????????????????????
+	sprintf(fileName, bmpSavePath, num);
+
+	FILE* pDestFile = fopen(fileName, "wb");
+	BITMAPFILEHEADER btfileHeader;
+	btfileHeader.bfType = MAKEWORD(66, 77);
+	btfileHeader.bfSize = lineBytes * height;
+	btfileHeader.bfReserved1 = 0;
+	btfileHeader.bfReserved2 = 0;
+	btfileHeader.bfOffBits = 54;
+
+	BITMAPINFOHEADER bitmapinfoheader;
+	bitmapinfoheader.biSize = 40;
+	bitmapinfoheader.biWidth = width;
+	bitmapinfoheader.biHeight = height;
+	bitmapinfoheader.biPlanes = 1;
+	bitmapinfoheader.biBitCount = 24;
+	bitmapinfoheader.biCompression = BI_RGB;
+	bitmapinfoheader.biSizeImage = lineBytes * height;
+	bitmapinfoheader.biXPelsPerMeter = 0;
+	bitmapinfoheader.biYPelsPerMeter = 0;
+	bitmapinfoheader.biClrUsed = 0;
+	bitmapinfoheader.biClrImportant = 0;
+
+	fwrite(&btfileHeader, 14, 1, pDestFile);
+	fwrite(&bitmapinfoheader, 40, 1, pDestFile);
+	for (i = height - 1; i >= 0; i--)
+	{
+		fwrite(pPictureRGB.data[0] + i * lineBytes, lineBytes, 1, pDestFile);
+	}
+
+	fclose(pDestFile);
+	avpicture_free(&pPictureRGB);
+}
 int sfp_refresh_thread(void *opaque) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)opaque;
 	while (!thread_exit) {
 		if (!thread_pause) {
-			//if (isexcut_line) {
-			//	pDlg->InvalidateRect(rect);
-			//	pDlg->UpdateWindow();
-			//}
 			SDL_Event event;
 			event.type = SFM_REFRESH_EVENT;
+			
 			SDL_PushEvent(&event);
 			//慢放
 			if (is_playing_slowly) {
@@ -183,13 +240,19 @@ int sfp_refresh_thread(void *opaque) {
 
 		}
 		//若为单帧播放
-		else if(is_playing_frame)
+		 else if(is_playing_frame)
 		{
 			SDL_Event event;
 			event.type = SFM_REFRESH_EVENT;
 			SDL_PushEvent(&event);
 			is_playing_frame = 0;
 
+		}
+		 else if (is_showpicture) {
+			SDL_Event event;
+			event.type = SFM_SHOWPICTURE_EVENT;
+			SDL_PushEvent(&event);
+			is_showpicture = 0;
 		}
 
 	}
@@ -203,13 +266,110 @@ int sfp_refresh_thread(void *opaque) {
 	normal_stop = true;
 	return 0;
 }
+int CJiaohuDlg::get_allframes() {
+	
+		AVFormatContext* fepFmtCtx = NULL;
+		AVCodecContext* fepCodecCtx = NULL;
+		AVCodec* fepCodec = NULL;
+	
+		USES_CONVERSION;
+		char* sourceFile = W2A(VideoFilepath);
 
+	
+		//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
+		av_register_all();
+	
+		int ret;
+		// 打开视频文件
+		if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
+			log_s("Can't open file when feature extracting");
+			return -1;
+		}
+		// 取出文件流信息
+		if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
+			log_s("Can't find suitable codec parameters when feature extracting");
+			return -1;
+		}
+	
+		//仅仅处理视频流
+		//只简单处理我们发现的第一个视频流
+		//  寻找第一个视频流
+		int videoIndex = -1;
+		for (int i = 0; i < fepFmtCtx->nb_streams; i++) {
+			if (fepFmtCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+				videoIndex = i;
+				break;
+			}
+		}
+		if (-1 == videoIndex) {
+			log_s("Can't find video stream when feature extracting");
+			return -1;
+		}
+		// 得到视频流编码上下文的指针
+		fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+		//  寻找视频流的解码器
+		fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
+	
+		if (NULL == fepCodec) {
+			log_s("Can't decode when feature extracting");
+			return -1;
+		}
+	
+		// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
+		//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
+		//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+		if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+			fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
+		}
+	
+	
+		//打开解码器
+		if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
+			log_s("Decode end or Error when feature extracting.");
+			return -1;
+		}
+		int videoHeight;
+		int videoWidth;
+		videoWidth = fepCodecCtx->width;
+		videoHeight = fepCodecCtx->height;
+	
+		AVPacket *InPack;
+		InPack = av_packet_alloc();
+		int len = 0;
+
+		int nComplete = 0;
+		
+		CString frame_num;
+		while ((av_read_frame(fepFmtCtx, InPack) >= 0)) {
+			
+			if (InPack->stream_index == videoIndex) {
+				if (avcodec_send_packet(fepCodecCtx, InPack) != 0) {//解码一帧压缩数据
+					log_s("Decode end or Error.");
+					break;
+				}
+				else {//处理解码数据
+					AVFrame* OutFrame;
+					OutFrame = av_frame_alloc();
+					avcodec_receive_frame(fepCodecCtx, OutFrame);
+					frames.push_back(OutFrame);
+					frame_num.Format(_T("frame%d"), nFrame);
+					m_listbox_frame.AddString(frame_num);
+					nFrame++;
+				}
+			}
+
+		}
+
+		avcodec_close(fepCodecCtx);
+		av_free(fepFmtCtx);
+
+}
 UINT videoplayer(LPVOID lpParam) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
-
+	last_sec = -1;
 	thread_exit = false;
 	sec = 0;
-	last_sec = -1;
+	
 	thread_pause = false;
 	AVFormatContext* pFmtCtx = NULL;
 	AVCodecContext* pCodecCtx = NULL;
@@ -222,7 +382,7 @@ UINT videoplayer(LPVOID lpParam) {
 	SwsContext* pSwsCtx = NULL;
 	
 	//SDL
-	int screen_w, screen_h;
+	
 	SDL_Window* screen = NULL;
 	SDL_Renderer* sdlRenderer = NULL;
 	SDL_Texture* sdlTexture = NULL;
@@ -296,7 +456,7 @@ UINT videoplayer(LPVOID lpParam) {
 	pDlg->VideoFilename = szList.GetAt(Count - 1);
 
 	if (pDlg->newvideo){
-	pDlg->m_listbox_videoclip.AddString(pDlg->VideoFilename);
+		pDlg->m_listbox_videoclip.AddString(pDlg->VideoFilename);
 	}
 
 	CString szSplit2 = _T(".");
@@ -305,6 +465,15 @@ UINT videoplayer(LPVOID lpParam) {
 	pDlg->suffix = szList2.GetAt(Count2 - 1);
 	int n = pDlg->VideoFilename.ReverseFind('.');
 	pDlg->VideoFilename_nosuffix = pDlg->VideoFilename.Left(n);
+
+	CString szSplit3 = _T("_");
+	CStringArray szList3;
+	int Count3 = SplitString(pDlg->VideoFilename_nosuffix, szSplit3, szList3, FALSE);
+	CString flag = szList3.GetAt(Count3 - 1);
+	if (flag == _T("x")) {
+		pDlg->get_allframes();
+	}
+
 	//6. 获取解码器并打开
 	pCodecCtx = avcodec_alloc_context3(NULL);
 	
@@ -351,16 +520,11 @@ UINT videoplayer(LPVOID lpParam) {
 	screen_h = pCodecCtx->height;
 	isexcut_black = false;
 	screen = SDL_CreateWindowFrom(pDlg->GetDlgItem(IDC_PICTURE_PLAY)->GetSafeHwnd());
-	
+
 	if (!screen) {
-		log_s("SDL: could not create window - exiting");
-		log_s(SDL_GetError());
 		return -1;
 	}
-
 	sdlRenderer = SDL_CreateRenderer(screen, -1, 0);
-	//IYUV: Y + U + V  (3 planes)
-	//YV12: Y + V + U  (3 planes)
 	sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING,pCodecCtx->width,pCodecCtx->height);
 
 	sdlRect.x = 0;
@@ -369,19 +533,15 @@ UINT videoplayer(LPVOID lpParam) {
 	sdlRect.h = screen_h;
 	video_tid = SDL_CreateThread(sfp_refresh_thread,NULL, (void*)pDlg);
 
-
-
 	//9.读取数据播放
 	for (;;) {		
-
-
 		if (to_stop) {
-			
 			to_stop = 0;
 			pDlg->m_slider_seek.SetPos(0);
-			SDL_Quit();
-			pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
+			//SDL_Quit();
+			//pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
 			thread_exit = true;
+			Sleep(100);
 			break;
 		}	
 		//Wait
@@ -451,16 +611,24 @@ UINT videoplayer(LPVOID lpParam) {
 			}
 			else {
 				//退出线程
-				thread_exit = true;
+				//thread_exit = true;
+				thread_pause = true;
 				av_packet_unref(pPacket);
 				//AfxMessageBox(_T("播放结束"));
 			}
 		}
-		else if (event.type == SDL_KEYDOWN) {
-			log_s("Pause");
-			//Pause
-			if (event.key.keysym.sym == SDLK_SPACE)
-				thread_pause = !thread_pause;
+		else if (event.type == SFM_SHOWPICTURE_EVENT) {
+			pFrame = frames[keyframe_index];
+			if (sws_scale(pSwsCtx, (const uint8_t * const*)pFrame->data, pFrame->linesize, 0, pCodecCtx->height,
+				pFrameYUV->data, pFrameYUV->linesize) == 0) {
+				continue;
+			}
+
+			SDL_UpdateTexture(sdlTexture, NULL, pFrameYUV->data[0], pFrameYUV->linesize[0]);
+			SDL_RenderClear(sdlRenderer);
+			//SDL_RenderCopy( sdlRenderer, sdlTexture, &sdlRect, &sdlRect);  
+			SDL_RenderCopy(sdlRenderer, sdlTexture, &sdlRect, NULL);
+			SDL_RenderPresent(sdlRenderer);
 		}
 		else if (event.type == SDL_QUIT) {
 			log_s("quit");
@@ -480,8 +648,8 @@ UINT videoplayer(LPVOID lpParam) {
 			pDlg->GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
 			pDlg->GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 			pDlg->GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
-			SDL_Quit();
-			pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
+			//SDL_Quit();
+			//pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
 			//AfxMessageBox(_T("播放结束"));
 			break;
 		}
@@ -501,6 +669,8 @@ void CJiaohuDlg::thread_stop() {
 	is_playing_frame = 0;
 	isexcut_black = true;
 }
+
+
 
 void CJiaohuDlg::OnBnClickedButtonOpen()
 {
@@ -524,31 +694,36 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		if (fea_is_vid) {
 			m_feature_folder_path.SetWindowText(strVideoFolderPath);
 		}
+		
 		newvideo = true;
 		if (play_thread) {
-			thread_stop();
+			thread_stop();	
+			result = MsgWaitForMultipleObjects(1, (HANDLE*)play_thread, FALSE, INFINITE, QS_ALLINPUT);
 		}
-
-		timeclips.clear();
-		m_slider_seek.timepos.clear();
-		thread_pause = false;
-		thread_exit = false;
-		con_add = true;
-		//pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
-		m_slider_seek.GetClientRect(&rect);
-		//ScreenToClient(rect);
-		//m_slider_seek.SetPos(0);
-		Sleep(300);
-		play_thread = AfxBeginThread(videoplayer, this);
-		m_listbox_videoclip.ResetContent();
-		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
-		GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
 		
-		m_describe.SetWindowText(_T("播放视频"));
-		GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
-		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
-		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
-		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	
+			Sleep(100);
+			timeclips.clear();
+			m_slider_seek.timepos.clear();
+			thread_pause = false;
+			thread_exit = false;
+			con_add = true;
+			nFrame = 0;
+
+			m_slider_seek.GetClientRect(&rect);
+			play_thread = AfxBeginThread(videoplayer, this);
+			m_listbox_videoclip.ResetContent();
+			m_listbox_frame.ResetContent();
+			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
+			GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+
+			m_describe.SetWindowText(_T("播放视频"));
+			GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
+			GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+			GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+			GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+		
+		
 	}
 
 
@@ -561,13 +736,16 @@ void CJiaohuDlg::OnBnClickedButtonPlay()
 
 	if (play_thread) {
 		thread_pause = !thread_pause;
+		
 		if (thread_pause) {
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+			
 			m_describe.SetWindowText(_T("停止播放"));
 		}
 		else
 		{
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
+			
 			m_describe.SetWindowText(_T("播放视频"));
 		}
 	}
@@ -633,7 +811,6 @@ void CJiaohuDlg::OnBnClickedButtonPlaySlowly()
 	if (thread_pause)
 	{
 		//播放
-		SDL_PauseAudio(0);
 		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
 		thread_pause = !thread_pause;
 	}
@@ -663,7 +840,6 @@ void CJiaohuDlg::OnBnClickedButtonPlayFast()
 	if (thread_pause)
 	{
 		//播放
-		SDL_PauseAudio(0);
 		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
 		thread_pause = !thread_pause;
 	}
@@ -677,11 +853,33 @@ void CJiaohuDlg::OnBnClickedButtonPlayFrame()
 	GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
 	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->SetWindowText(_T("慢放"));
 	GetDlgItem(IDC_BUTTON_PLAY_FAST)->SetWindowText(_T("快放"));
-
 	is_playing_frame = 1;
 }
 
+void CJiaohuDlg::OnLbnSelchangeListFrames()
+{
+	// TODO: 在此添加控件通知处理程序代码
 
+	int num = m_listbox_frame.GetCount();
+	if (num != 0) {
+		keyframe_index = m_listbox_frame.GetCurSel();
+		if (keyframe_index != LB_ERR) {
+			thread_pause = true;
+			is_showpicture = 1;	
+		}
+	}
+	
+}
+void CJiaohuDlg::OnBnClickedButtonDeleframe()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	//it_frame = find(frames.begin(), frames.end(), keyframe_index);
+	frames.erase(frames.begin()+keyframe_index);
+	m_listbox_frame.DeleteString(keyframe_index);
+	nFrame--;
+	thread_pause = true;
+	is_showpicture = 1;
+}
 BOOL CJiaohuDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
@@ -694,6 +892,8 @@ BOOL CJiaohuDlg::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 	GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
 	GetDlgItem(IDC_PROGRESS)->ShowWindow(0);
+	m_progress.SetRange(0, 100);
+	m_combox_feature.SetCurSel(0);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -728,6 +928,7 @@ void CJiaohuDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 }
 
 
+
 void CJiaohuDlg::OnLbnDblclkListVideoclip()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -742,37 +943,31 @@ void CJiaohuDlg::OnLbnDblclkListVideoclip()
 
 			if (play_thread) {
 				thread_stop();
-				//AfxMessageBox(_T("play线程正在运行"));
+				result = MsgWaitForMultipleObjects(1, (HANDLE*)play_thread, FALSE, INFINITE, QS_ALLINPUT);
 			}
+			Sleep(100);
 			timeclips.clear();
 			m_slider_seek.timepos.clear();
 			thread_pause = false;
 			thread_exit = false;
-			con_add = true;		
-			//pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
+			con_add = true;	
+			nFrame = 0;
 			m_slider_seek.GetClientRect(&rect);
-			//m_slider_seek.SetPos(0);
-			Sleep(300);
+			m_listbox_frame.ResetContent();
 			CString s;
 			m_listbox_videoclip.GetText(nSel, s);
 			VideoFilepath = strVideoFolderPath + "\\" + s;
 			play_thread = AfxBeginThread(videoplayer, this);
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 			GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
-			m_describe.SetWindowText(_T("播放视频"));
 			GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
 			GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
 			GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 			GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+			m_describe.SetWindowText(_T("播放视频"));
 		}
 	}
 
-end:
-	{
-		//////////////////////////////////////////////////////////////////////////
-		//这里可以做一些其他工作
-		//////////////////////////////////////////////////////////////////////////
-	}
 }
 
 void CJiaohuDlg::OnBnClickedButtonCutvideo()
@@ -968,84 +1163,397 @@ void CJiaohuDlg::OnPaint()
 	
 }
 
-void SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num)
-{
-	AVPicture pPictureRGB;//RGB图片
 
-	static struct SwsContext* img_convert_ctx;
-	img_convert_ctx = sws_getContext(width, height, CodecContex->pix_fmt, width, height, \
-		AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
-	// 确认所需缓冲区大小并且分配缓冲区空间
-	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_RGB24, width, height);
-	sws_scale(img_convert_ctx, Picture->data, Picture->linesize, \
-		0, height, pPictureRGB.data, pPictureRGB.linesize);
 
-	int lineBytes = pPictureRGB.linesize[0], i = 0;
 
-	char fileName[1024] = { 0 };
-	char* bmpSavePath = "%d.bmp";
-	//time_t ltime;
-	//time(<ime);
-	//sprintf(fileName,bmpSavePath , ltime);////////////////////////////////////////////???????????????????????????
-	sprintf(fileName, bmpSavePath, num);
+//UINT feature_extract(LPVOID lpParam) {
+//	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+//	AVFormatContext* fepFmtCtx = NULL;
+//	AVCodecContext* fepCodecCtx = NULL;
+//	AVCodec* fepCodec = NULL;
+//
+//	USES_CONVERSION;
+//	char* sourceFile = W2A(pDlg->VideoFilepath);
+//
+//	// 将提取特征按钮disable
+//	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
+//
+//	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
+//	av_register_all();
+//
+//	int ret;
+//	// 打开视频文件
+//	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
+//		log_s("Can't open file when feature extracting");
+//		return -1;
+//	}
+//	// 取出文件流信息
+//	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
+//		log_s("Can't find suitable codec parameters when feature extracting");
+//		return -1;
+//	}
+//
+//	//仅仅处理视频流
+//	//只简单处理我们发现的第一个视频流
+//	//  寻找第一个视频流
+//	int videoIndex = -1;
+//	for (int i = 0; i < fepFmtCtx->nb_streams; i++) {
+//		if (fepFmtCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+//			videoIndex = i;
+//			break;
+//		}
+//	}
+//	if (-1 == videoIndex) {
+//		log_s("Can't find video stream when feature extracting");
+//		return -1;
+//	}
+//	// 得到视频流编码上下文的指针
+//	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+//	//  寻找视频流的解码器
+//	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
+//
+//	if (NULL == fepCodec) {
+//		log_s("Can't decode when feature extracting");
+//		return -1;
+//	}
+//
+//	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
+//	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
+//	//那么两帧之间的边界就不一定刚好是包的边界。这里，我们告知解码器我们可以处理bit流。
+//	if (fepCodec->capabilities & AV_CODEC_CAP_TRUNCATED) {
+//		fepCodecCtx->flags |= AV_CODEC_CAP_TRUNCATED;
+//	}
+//
+//
+//	//打开解码器
+//	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
+//		log_s("Decode end or Error when feature extracting.");
+//		return -1;
+//	}
+//	int videoHeight;
+//	int videoWidth;
+//	videoWidth = fepCodecCtx->width;
+//	videoHeight = fepCodecCtx->height;
+//
+//	AVPacket InPack;
+//	int len = 0;
+//	AVFrame* OutFrame;
+//	OutFrame = av_frame_alloc();
+//	int nComplete = 0;
+//
+//	int nFrame = 0;
+//	AVRational avRation = fepCodecCtx->time_base;
+//	float frameRate = (float)avRation.den / avRation.num;
+//	//av_seek_frame(pInputFormatContext,0);
+//	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
+//		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
+//
+//		//判断是否是关键帧
+//		if (nComplete > 0 && OutFrame->key_frame) {
+//			//解码一帧成功
+//			pDlg->SaveBmp(fepCodecCtx, OutFrame, videoWidth, videoHeight, nFrame);
+//			nFrame++;
+//		}
+//	}
+//
+//	//cout << " save frame number: " << nFrame << endl;
+//	avcodec_close(fepCodecCtx);
+//	av_free(fepFmtCtx);
+//
+//	CString clipname = pDlg->VideoFilename_nosuffix + "-X5-FD.flv" ;
+//	CString bmppath = pDlg->strVideoFolderPath + "//%d.bmp";
+//	CString videopath = pDlg->strVideoFolderPath + "//"+clipname;
+//	CString comm;
+//	comm.Format(_T("ffmpeg -f image2 -i %s  -vcodec libx264 -r 10 %s -y"), bmppath,videopath);
+//
+//	//AfxMessageBox(comm);
+//	char* outcomm = W2A(comm);
+//	WinExec(outcomm,SW_HIDE);
+//
+//	Sleep(1000);
+//
+//
+//	CString bmppath_del = pDlg->strVideoFolderPath + "\\*.bmp";
+//	CString comm_del;
+//	comm_del.Format(_T("cmd.exe /k del %s"), bmppath_del);
+//	char* outcomm_del = W2A(comm_del);
+//	WinExec(outcomm_del, SW_HIDE);
+//
+//	pDlg->m_describe.SetWindowText(_T("视频切割完毕"));
+//
+//	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
+//	pDlg->m_progress.ShowWindow(SW_HIDE);
+//	pDlg->m_progress.RedrawWindow();
+//	return 0;
+//}
 
-	FILE* pDestFile = fopen(fileName, "wb");
-	BITMAPFILEHEADER btfileHeader;
-	btfileHeader.bfType = MAKEWORD(66, 77);
-	btfileHeader.bfSize = lineBytes * height;
-	btfileHeader.bfReserved1 = 0;
-	btfileHeader.bfReserved2 = 0;
-	btfileHeader.bfOffBits = 54;
 
-	BITMAPINFOHEADER bitmapinfoheader;
-	bitmapinfoheader.biSize = 40;
-	bitmapinfoheader.biWidth = width;
-	bitmapinfoheader.biHeight = height;
-	bitmapinfoheader.biPlanes = 1;
-	bitmapinfoheader.biBitCount = 24;
-	bitmapinfoheader.biCompression = BI_RGB;
-	bitmapinfoheader.biSizeImage = lineBytes * height;
-	bitmapinfoheader.biXPelsPerMeter = 0;
-	bitmapinfoheader.biYPelsPerMeter = 0;
-	bitmapinfoheader.biClrUsed = 0;
-	bitmapinfoheader.biClrImportant = 0;
 
-	fwrite(&btfileHeader, 14, 1, pDestFile);
-	fwrite(&bitmapinfoheader, 40, 1, pDestFile);
-	for (i = height - 1; i >= 0; i--)
-	{
-		fwrite(pPictureRGB.data[0] + i * lineBytes, lineBytes, 1, pDestFile);
-	}
+#define STREAM_DURATION   10.0
+#define STREAM_FRAME_RATE 25 /* 25 images/s */
+#define STREAM_PIX_FMT    AV_PIX_FMT_YUV420P /* default pix_fmt */
+#define SCALE_FLAGS SWS_BICUBIC
+#define AVFMT_RAWPICTURE   0x0020
+typedef struct OutputStream { 
+	AVStream* st;    /* pts of the next frame that will be generated */    
+	int64_t next_pts;   
+	int samples_count;   
+	AVFrame* frame;  
+	AVFrame* tmp_frame;   
+	float t, tincr, tincr2;  
+	struct SwsContext* sws_ctx;   
+	//struct SwrContext* swr_ctx; 
+} OutputStream;
 
-	fclose(pDestFile);
-	avpicture_free(&pPictureRGB);
+static int write_frame(AVFormatContext* fmt_ctx, const AVRational* time_base, AVStream* st, AVPacket* pkt) {   
+	/* rescale output packet timestamp values from codec to stream timebase */  
+	av_packet_rescale_ts(pkt, *time_base, st->time_base);  
+	pkt->stream_index = st->index;  
+	/* Write the compressed frame to the media file. */    
+	//log_packet(fmt_ctx, pkt);   
+	return av_interleaved_write_frame(fmt_ctx, pkt); 
+}
+/* Add an output stream. */
+static void add_stream(OutputStream* ost, AVFormatContext* oc, AVCodec** codec, enum AVCodecID codec_id,int keywidth,int keyheight) { 
+	AVCodecContext* c;   
+	int i;   
+	/* find the encoder */  
+	 *codec = avcodec_find_encoder(codec_id);  
+	if (!(*codec)) { 
+		fprintf(stderr, "Could not find encoder for '%s'\n", avcodec_get_name(codec_id));   
+		exit(1);
+	 }    
+	ost->st = avformat_new_stream(oc, *codec);  
+    if (!ost->st) { fprintf(stderr, "Could not allocate stream\n");  
+      exit(1); 
+	}  
+	ost->st->id = videoIndex;   
+    c = ost->st->codec;  
+    switch ((*codec)->type) { 
+		case AVMEDIA_TYPE_AUDIO:   
+			c->sample_fmt = (*codec)->sample_fmts ? (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;    
+			c->bit_rate = 64000;        
+			c->sample_rate = 44100;        
+			if ((*codec)->supported_samplerates) {
+				c->sample_rate = (*codec)->supported_samplerates[0];
+				for (i = 0; (*codec)->supported_samplerates[i]; i++) { 
+					if ((*codec)->supported_samplerates[i] == 44100) 
+						c->sample_rate = 44100; 
+				} 
+			}       
+			c->channels = av_get_channel_layout_nb_channels(c->channel_layout);			
+			c->channel_layout = AV_CH_LAYOUT_STEREO;        
+			if ((*codec)->channel_layouts) {
+				c->channel_layout = (*codec)->channel_layouts[0];
+				for (i = 0; (*codec)->channel_layouts[i]; i++) { 
+					if ((*codec)->channel_layouts[i] == AV_CH_LAYOUT_STEREO)
+						c->channel_layout = AV_CH_LAYOUT_STEREO; 
+				}
+			}        
+			c->channels = av_get_channel_layout_nb_channels(c->channel_layout);        
+			ost->st->time_base = AVRational{ 1, c->sample_rate };
+			break;    
+		case AVMEDIA_TYPE_VIDEO:        
+			c->codec_id = codec_id;        
+			c->bit_rate = 400000;       
+			/* Resolution must be a multiple of two. */       
+			c->width = keywidth;      
+			c->height = keyheight;     
+			/* timebase: This is the fundamental unit of time (in seconds) in terms      
+			 * of which frame timestamps are represented. For fixed-fps content,       
+			 * timebase should be 1/framerate and timestamp increments should be       
+			 * identical to 1. */     
+			ost->st->time_base = AVRational{ 1,STREAM_FRAME_RATE };
+			c->time_base = ost->st->time_base;  
+			c->gop_size = 12; 
+			/* emit one intra frame every twelve frames at most */      
+			c->pix_fmt = STREAM_PIX_FMT;    
+			if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {        
+				/* just for testing, we also add B frames */   
+				c->max_b_frames = 2; 
+			}   
+			if (c->codec_id == AV_CODEC_ID_MPEG1VIDEO) {     
+				/* Needed to avoid using macroblocks in which some coeffs overflow.    
+				 * This does not happen with normal video, it just happens here as       
+				 * the motion of the chroma plane does not match the luma plane. */     
+				c->mb_decision = 2; 
+			}    
+			break;   
+		default:    
+			break; }   
+	/* Some formats want stream headers to be separate. */   
+	if (oc->oformat->flags & AVFMT_GLOBALHEADER)     
+		c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 }
 
+/**************************************************************/
+/* video output */
+static AVFrame* alloc_picture(enum AVPixelFormat pix_fmt, int width, int height) { 
+	AVFrame* picture;   
+	int ret;   
+	picture = av_frame_alloc();  
+	if (!picture)      
+		return NULL;   
+	picture->format = pix_fmt;  
+	picture->width = width;  
+	picture->height = height;  
+	/* allocate the buffers for the frame data */   
+	ret = av_frame_get_buffer(picture, 32);  
+	if (ret < 0) {
+		fprintf(stderr, "Could not allocate frame data.\n");     
+		exit(1); 
+	}   
+	return picture; 
+}
+static void open_video(AVFormatContext* oc, AVCodec* codec, OutputStream* ost, AVDictionary* opt_arg) {
+	int ret;   
+	AVCodecContext* c = ost->st->codec;    
+	AVDictionary* opt = NULL;    
+	av_dict_copy(&opt, opt_arg, 0); 
+	/* open the codec */   
+	ret = avcodec_open2(c, codec, &opt);   
+	av_dict_free(&opt);   
+	if (ret < 0) { 
+		AfxMessageBox(_T("123"));
+		//fprintf(stderr, "Could not open video codec: %s\n", av_err2str(ret));      
+		exit(1); 
+	}   
+	/* allocate and init a re-usable frame */  
+	ost->frame = alloc_picture(c->pix_fmt, c->width, c->height);   
+	if (!ost->frame) {
+		fprintf(stderr, "Could not allocate video frame\n");     
+		exit(1); 
+	}   
+	/* If the output format is not YUV420P, then a temporary YUV420P   
+	 * picture is needed too. It is then converted to the required    
+	 * output format. */   
+	ost->tmp_frame = NULL;  
+	if (c->pix_fmt != AV_PIX_FMT_YUV420P) { 
+		ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);    
+		if (!ost->tmp_frame) { 
+			fprintf(stderr, "Could not allocate temporary picture\n");    
+			exit(1);
+		}
+	} 
+}
+/* Prepare a dummy image. */
+static void fill_yuv_image(AVFrame* pict, AVFrame* keyframe, int frame_index, int width, int height) {
+	int x, y, i, ret; 
+	/* when we pass a frame to the encoder, it may keep a reference to it   
+	* internally;   
+	* make sure we do not overwrite it here     */   
+	ret = av_frame_make_writable(pict); 
+	if (ret < 0)     
+		exit(1);  
+	i = frame_index; 
+	pict->data[0] = keyframe->data[0];
+	pict->data[1] = keyframe->data[1];
+	pict->data[2] = keyframe->data[2];
+
+}
+static AVFrame* get_video_frame(OutputStream* ost, AVFrame* keyframe) {
+	AVCodecContext* c = ost->st->codec;
+	/* check if we want to generate more frames */  
+	if (av_compare_ts(ost->next_pts, ost->st->codec->time_base, STREAM_DURATION, AVRational { 1, 1 }) >= 0)
+		return NULL;    
+	if (c->pix_fmt != AV_PIX_FMT_YUV420P) {     
+		/* as we only generate a YUV420P picture, we must convert it      
+		 * to the codec pixel format if needed */     
+		if (!ost->sws_ctx) {
+			ost->sws_ctx = sws_getContext(c->width, c->height, AV_PIX_FMT_YUV420P, c->width, c->height, c->pix_fmt, SCALE_FLAGS, NULL, NULL, NULL);    
+			if (!ost->sws_ctx) {
+				fprintf(stderr, "Could not initialize the conversion context\n");       
+				exit(1); 
+			} 
+		}      
+		fill_yuv_image(ost->tmp_frame, keyframe,ost->next_pts, c->width, c->height); 
+		sws_scale(ost->sws_ctx, (const uint8_t * const*)ost->tmp_frame->data, ost->tmp_frame->linesize, 0, c->height, ost->frame->data, ost->frame->linesize);
+
+		
+	} else { 
+		fill_yuv_image(ost->frame, keyframe,ost->next_pts, c->width, c->height);
+
+	}   
+	ost->frame->pts = ost->next_pts++;    
+	return ost->frame; 
+}
+
+
+/* * encode one video frame and send it to the muxer 
+ * return 1 when encoding is finished, 0 otherwise */
+static int write_video_frame(AVFormatContext* oc, OutputStream* ost, AVFrame* keyframe) {
+	int ret;    
+	AVCodecContext* c; 
+	AVFrame* frame;  
+	int got_packet = 0; 
+	c = ost->st->codec; 
+	frame = get_video_frame(ost,keyframe);  
+
+	if (oc->oformat->flags & AVFMT_RAWPICTURE) {   
+		/* a hack to avoid data copy with some raw video muxers */  
+		AVPacket pkt;   
+		av_init_packet(&pkt);   
+		if (!frame)   
+			return 1;    
+		pkt.flags |= AV_PKT_FLAG_KEY;     
+		pkt.stream_index = ost->st->index;   
+		pkt.data = (uint8_t*)frame;     
+		pkt.size = sizeof(AVPicture);    
+		pkt.pts = pkt.dts = frame->pts;    
+		av_packet_rescale_ts(&pkt, c->time_base, ost->st->time_base);    
+		ret = av_interleaved_write_frame(oc, &pkt); 
+	} else {
+		AVPacket pkt = { 0 };     
+		av_init_packet(&pkt);   
+		/* encode the image */   
+		ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);   
+		if (ret < 0) {
+			//fprintf(stderr, "Error encoding video frame: %s\n", av_err2str(ret));   
+			exit(1); 
+		}     
+		if (got_packet) {
+			ret = write_frame(oc, &c->time_base, ost->st, &pkt); 
+		} else { 
+			ret = 0; 
+		} 
+	}    
+	if (ret < 0) {
+		//fprintf(stderr, "Error while writing video frame: %s\n", av_err2str(ret));  
+		exit(1); 
+	}  
+	return (frame || got_packet) ? 0 : 1;
+}
+static void close_stream(AVFormatContext* oc, OutputStream* ost) { 
+	avcodec_close(ost->st->codec);  
+	av_frame_free(&ost->frame); 
+	av_frame_free(&ost->tmp_frame);
+	sws_freeContext(ost->sws_ctx);  
+	//swr_free(&ost->swr_ctx); 
+}
+int key_width;
+int key_height;
 UINT feature_extract(LPVOID lpParam) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+	int ret;
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
-
 	USES_CONVERSION;
 	char* sourceFile = W2A(pDlg->VideoFilepath);
 
 	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 	av_register_all();
 
-	int ret;
 	// 打开视频文件
 	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
-		cout << " can't open file " << endl;
+		log_s("Can't open file when feature extracting");
 		return -1;
 	}
 	// 取出文件流信息
 	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
-		cout << " can't find suitable codec parameters" << endl;
+		log_s("Can't find suitable codec parameters when feature extracting");
 		return -1;
 	}
-	//用于诊断 //产品中不可用
-	//dump_format(pInputFormatContext, 0, sourceFile, false);
 
 	//仅仅处理视频流
 	//只简单处理我们发现的第一个视频流
@@ -1058,20 +1566,21 @@ UINT feature_extract(LPVOID lpParam) {
 		}
 	}
 	if (-1 == videoIndex) {
-		cout << " can't find video stream !" << endl;
+		log_s("Can't find video stream when feature extracting");
 		return -1;
 	}
 	// 得到视频流编码上下文的指针
 	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
+	key_width = fepCodecCtx->width;
+	key_height = fepCodecCtx->height;
+
 	//  寻找视频流的解码器
 	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
 
 	if (NULL == fepCodec) {
-		cout << "can't decode " << endl;
+		log_s("Can't decode when feature extracting");
 		return -1;
 	}
-
-
 
 	// 通知解码器我们能够处理截断的bit流，bit流帧边界可以在包中
 	//视频流中的数据是被分割放入包中的。因为每个视频帧的数据的大小是可变的，
@@ -1083,37 +1592,236 @@ UINT feature_extract(LPVOID lpParam) {
 
 	//打开解码器
 	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
-		cout << "decode error" << endl;
+		log_s("Decode end or Error when feature extracting.");
 		return -1;
 	}
-	int videoHeight;
-	int videoWidth;
-	videoWidth = fepCodecCtx->width;
-	videoHeight = fepCodecCtx->height;
-
 	AVPacket InPack;
 	int len = 0;
 	AVFrame* OutFrame;
 	OutFrame = av_frame_alloc();
 	int nComplete = 0;
 
-	int nFrame = 0;
-	AVRational avRation = fepCodecCtx->time_base;
-	float frameRate = (float)avRation.den / avRation.num;
-	//av_seek_frame(pInputFormatContext,0);
+
+	OutputStream video_st = { 0 };
+	const char* filename;
+	AVOutputFormat* fmt;
+	AVFormatContext* oc;
+	AVCodec* video_codec;
+	int have_video = 0;
+	int encode_video = 0;
+	AVDictionary* opt = NULL;
+	/* Initialize libavcodec, and register all codecs and formats. */
+	CString newclipname = pDlg->VideoFilename_nosuffix + "_x" + ".flv";
+	CString outfile = pDlg->strVideoFolderPath + "//" + newclipname;
+	
+	filename = W2A(outfile);
+	/* allocate the output media context */
+	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
+	if (!oc) {
+		printf("Could not deduce output format from file extension: using MPEG.\n");
+		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
+	}
+	if (!oc) {
+		
+		return 1;
+	}
+
+		
+	fmt = oc->oformat;
+	/* Add the audio and video streams using the default format codecs
+	 * and initialize the codecs. */
+	if (fmt->video_codec != AV_CODEC_ID_NONE) {
+		add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
+		have_video = 1;
+		encode_video = 1;
+	}
+	/* Now that all the parameters are set, we can open the audio and
+	 * video codecs and allocate the necessary encode buffers. */
+	if (have_video)
+		open_video(oc, video_codec, &video_st, opt);
+	av_dump_format(oc, 0, filename, 1);
+	/* open the output file, if needed */
+	if (!(fmt->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&oc->pb, filename, AVIO_FLAG_WRITE);
+		if (ret < 0) {
+			//fprintf(stderr, "Could not open '%s': %s\n", filename, av_err2str(ret));     
+			return 1;
+		}
+	}
+	/* Write the stream header, if any. */
+	ret = avformat_write_header(oc, &opt);
+	if (ret < 0) {
+		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
+		return 1;
+	}
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
 
 		//判断是否是关键帧
 		if (nComplete > 0 && OutFrame->key_frame) {
 			//解码一帧成功
-			SaveBmp(fepCodecCtx, OutFrame, videoWidth, videoHeight, nFrame);
-			nFrame++;
+			write_video_frame(oc, &video_st, OutFrame);
 		}
 	}
-	cout << " save frame number: " << nFrame << endl;
-	avcodec_close(fepCodecCtx);
-	av_free(fepFmtCtx);
+	/* Write the trailer, if any. The trailer must be written before you  
+	* close the CodecContexts open when you wrote the header; otherwise  
+	* av_write_trailer() may try to use memory that was freed on  
+	* av_codec_close(). */  
+	av_write_trailer(oc);
+	/* Close each codec. */  
+	if (have_video)   
+		close_stream(oc, &video_st);    
+	if (!(fmt->flags & AVFMT_NOFILE))    
+		/* Close the output file. */     
+		avio_closep(&oc->pb); 
+	/* free the stream */   
+	avformat_free_context(oc); 
+	pDlg->m_listbox_videoclip.AddString(newclipname);
+	pDlg->KillTimer(1);
+	pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
+	pDlg->GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(1);
+	pDlg->GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(1);
+	pDlg->GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(1);
+	pDlg->GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(1);
+	pDlg->GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(1);
+	pDlg->m_describe.SetWindowText(_T("提取成功"));
+	pDlg->m_progress.ShowWindow(SW_HIDE);
+	return 0;
+}
+
+
+void CJiaohuDlg::OnBnClickedButtonFeatureextract()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	if (!thread_pause) {
+		thread_pause = !thread_pause;
+		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+	}
+	GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(0);
+	m_progress.ShowWindow(SW_SHOW);
+	m_progress.SetPos(0);
+	SetTimer(1, 20, nullptr);
+	key_thread = AfxBeginThread(feature_extract, this);
+	result = MsgWaitForMultipleObjects(1, (HANDLE*)key_thread, FALSE, INFINITE, QS_ALLINPUT);
+	if (result == WAIT_OBJECT_0)
+	{
+	m_describe.SetWindowText(_T("提取成功"));
+	}
+	
+
+}
+
+
+void CJiaohuDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	int nMax, nMin, nPos;
+	m_progress.GetRange(nMin, nMax);
+	nPos = m_progress.GetPos();
+	++nPos;
+	if (nPos > nMax)
+	{
+		nPos = 0;
+	}
+	m_progress.SetPos(nPos);
+
+	CDialogEx::OnTimer(nIDEvent);
+}
+
+int CJiaohuDlg::save_newvideo() {
+
+	int ret;
+	OutputStream video_st = { 0 };
+	const char* filename;
+	AVOutputFormat* fmt;
+	AVFormatContext* oc;
+	AVCodec* video_codec;
+	AVFrame* temp_frame;
+	int have_video = 0;
+	int encode_video = 0;
+	AVDictionary* opt = NULL;
+	/* Initialize libavcodec, and register all codecs and formats. */
+	//CString newclipname = VideoFilename_nosuffix + "-FD" + ".flv";
+	//CString outfile = strVideoFolderPath + "//" + newclipname;
+	CString outfile = VideoFilepath;
+	USES_CONVERSION;
+	filename = W2A(outfile);
+	/* allocate the output media context */
+	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
+	if (!oc) {
+		printf("Could not deduce output format from file extension: using MPEG.\n");
+		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
+	}
+	
+	if (!oc) {
+		
+		return 1;
+	}
+		
+	fmt = oc->oformat;
+	/* Add the audio and video streams using the default format codecs
+	 * and initialize the codecs. */
+	if (fmt->video_codec != AV_CODEC_ID_NONE) {
+		add_stream(&video_st, oc, &video_codec, fmt->video_codec, screen_w, screen_h);
+		have_video = 1;
+		encode_video = 1;
+		
+	}
+	/* Now that all the parameters are set, we can open the audio and
+	 * video codecs and allocate the necessary encode buffers. */
+	if (have_video) {
+		open_video(oc, video_codec, &video_st, opt);	
+	}
+		
+	
+	av_dump_format(oc, 0, filename, 1);
+	/* open the output file, if needed */
+	if (!(fmt->flags & AVFMT_NOFILE)) {
+		ret = avio_open(&oc->pb, filename, AVIO_FLAG_WRITE);
+		if (ret < 0) {
+			
+			//fprintf(stderr, "Could not open '%s': %s\n", filename, av_err2str(ret));     
+			return 1;
+		}
+	}
+	/* Write the stream header, if any. */
+	ret = avformat_write_header(oc, &opt);
+	if (ret < 0) {
+		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
+		return 1;
+	}
+	
+		
+	for (int i = 0; i<frames.size(); i++)
+	{
+		temp_frame = frames[i];
+		write_video_frame(oc, &video_st, temp_frame);
+	}
+		
+	av_write_trailer(oc);
+	/* Close each codec. */
+	if (have_video)
+		close_stream(oc, &video_st);
+	if (!(fmt->flags & AVFMT_NOFILE))
+		/* Close the output file. */
+		avio_closep(&oc->pb);
+	/* free the stream */
+	avformat_free_context(oc);
+	
+}
+
+void CJiaohuDlg::OnBnClickedButtonSave()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	save_newvideo();
 }
 
 
@@ -1122,8 +1830,22 @@ UINT feature_extract(LPVOID lpParam) {
 
 
 
-void CJiaohuDlg::OnBnClickedButtonFeatureextract()
+
+
+
+
+
+void CJiaohuDlg::OnBnClickedButtonQuick()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	AfxBeginThread(feature_extract, this);
+	//CTabCtrl* m_tab = (CTabCtrl*)::GetDlgItem(AfxGetApp()->GetMainWnd()->GetSafeHwnd(), IDC_TAB1);
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+	pWnd->change();
+	
+	
+	
+	/*NMHDR   nmhdr;
+	nmhdr.code = TCN_SELCHANGE;
+	::SendMessage(::GetDlgItem(AfxGetApp()->GetMainWnd()->GetSafeHwnd(), IDC_TAB1), TCM_SETCURSEL, 01, NULL);
+	::SendMessage(GetParent()->m_hWnd, WM_NOTIFY, MAKELONG(TCN_SELCHANGE, 2), (LPARAM)(&nmhdr));*/
 }
