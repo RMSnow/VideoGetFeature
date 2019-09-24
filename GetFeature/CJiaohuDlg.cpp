@@ -5,7 +5,9 @@
 #include "GetFeature.h"
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
-#include<atlconv.h>
+#include "SaveBmp.h"
+
+//*************************** ffmpeg ***************************
 #include <vector>
 #include "GetFeatureDlg.h"
 #include "CTezhengDlg.h"
@@ -1006,15 +1008,16 @@ void CJiaohuDlg::OnBnClickedButtonCutvideo()
 			AfxMessageBox(_T("视频无法切割"));
 			continue;
 		}
-			comm.Format(_T("ffmpeg -ss %d -to %d  -accurate_seek -i %s -vcodec libx264 -acodec aac -avoid_negative_ts 1 %s -y"), timeclips[2 * i], timeclips[2 * i + 1], VideoFilepath, outfile);
-			USES_CONVERSION;
-			char* outcomm = W2A(comm);
-			if (WinExec(outcomm, SW_HIDE)) {
-				desceibe.Format(_T("%s号视频片段正在切割，请耐心等待！"),str);
-				m_describe.SetWindowText(desceibe);
-				m_listbox_videoclip.AddString(clipname);
-				Sleep(600);
-			}
+
+		comm.Format(_T("ffmpeg -ss %d -to %d  -accurate_seek -i %s -vcodec libx264 -acodec aac -avoid_negative_ts 1 %s -y"), timeclips[2 * i], timeclips[2 * i + 1], VideoFilepath, outfile);
+		USES_CONVERSION;
+		char* outcomm = W2A(comm);
+		if (WinExec(outcomm, SW_HIDE)) {
+			desceibe.Format(_T("%s号视频片段正在切割，请耐心等待！"),str);
+			m_describe.SetWindowText(desceibe);
+			m_listbox_videoclip.AddString(clipname);
+			Sleep(600);
+		}
 			
 	}	
 	
@@ -1542,6 +1545,9 @@ UINT feature_extract(LPVOID lpParam) {
 	USES_CONVERSION;
 	char* sourceFile = W2A(pDlg->VideoFilepath);
 
+	// 将提取特征按钮disable
+	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
+
 	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 	av_register_all();
 
@@ -1591,7 +1597,7 @@ UINT feature_extract(LPVOID lpParam) {
 	}
 
 
-	//打开解码器
+	//打开解码器 
 	if (avcodec_open2(fepCodecCtx, fepCodec, NULL) != 0) {
 		log_s("Decode end or Error when feature extracting.");
 		return -1;

@@ -6,7 +6,14 @@
 #include "CTezhengDlg.h"
 #include "afxdialogex.h"
 #pragma comment(lib,"gdiplus.lib")
+#include "SaveBmp.h"
 
+#include <vector>
+#include <iostream>
+using namespace std;
+
+
+#pragma comment(lib,"gdiplus.lib")
 // CTezhengDlg 对话框
 
 IMPLEMENT_DYNAMIC(CTezhengDlg, CDialogEx)
