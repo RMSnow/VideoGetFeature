@@ -2,8 +2,16 @@
 #include <list>
 #include<Gdiplus.h>
 using namespace Gdiplus;
-// CTezhengDlg 对话框
 
+// CTezhengDlg 对话框
+extern "C" {
+#include <libavformat/avformat.h>   
+#include <libavcodec/avcodec.h>   
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
+#include <SDL.h>
+#include <SDL_thread.h>
+}
 class CTezhengDlg : public CDialogEx
 {
 	DECLARE_DYNAMIC(CTezhengDlg)
@@ -45,9 +53,10 @@ public:
 	}control;
 	std::list<control*> m_con_list;
 	virtual BOOL OnInitDialog();
-	CImageList m_imgList;
-	afx_msg void OnBnClickedButtonSelectall();
+	CImageList* m_imgList = NULL;
 	CListCtrl m_listCtl;
 	ULONG_PTR m_gdiplusToken;
+	afx_msg void OnBnClickedButtonSelectall();
 	afx_msg void OnDestroy();
+	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt,int width, int height, int bpp);
 };

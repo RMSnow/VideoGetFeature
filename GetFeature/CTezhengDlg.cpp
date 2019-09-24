@@ -3,6 +3,8 @@
 
 #include "pch.h"
 #include "GetFeature.h"
+#include "CJiaohuDlg.h"
+#include "GetFeatureDlg.h"
 #include "CTezhengDlg.h"
 #include "afxdialogex.h"
 #pragma comment(lib,"gdiplus.lib")
@@ -18,8 +20,7 @@ using namespace std;
 
 IMPLEMENT_DYNAMIC(CTezhengDlg, CDialogEx)
 
-CTezhengDlg::CTezhengDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_DIALOG3_TEZHENG, pParent)
+CTezhengDlg::CTezhengDlg(CWnd* pParent /*=nullptr*/): CDialogEx(IDD_DIALOG3_TEZHENG, pParent)
 {
 
 }
@@ -98,38 +99,109 @@ void CTezhengDlg::get_control_original_proportion() {
 		hwndChild = ::GetWindow(hwndChild, GW_HWNDNEXT);
 	}
 }
+void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp)
+{
+	AVPicture pPictureRGB;//RGB图片
 
-void CTezhengDlg::DrawThumbnails() {
+	static struct SwsContext* img_convert_ctx;
+	img_convert_ctx = sws_getContext(width, height, pixfmt, width, height, \
+		AV_PIX_FMT_BGR24, SWS_BICUBIC, NULL, NULL, NULL);
+	// 确认所需缓冲区大小并且分配缓冲区空间
+	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_BGR24, width, height);
+	sws_scale(img_convert_ctx, pFrameRGB->data, pFrameRGB->linesize, \
+		0, height, pPictureRGB.data, pPictureRGB.linesize);
 
-	m_imgList.Create(100, 100, ILC_COLOR32 | ILC_MASK, 50, 2);
-	m_listCtl.SetImageList(&m_imgList, LVSIL_NORMAL);
-	Bitmap bmp(_T("E:\\0520.bmp"));
+	int lineBytes = pPictureRGB.linesize[0], i = 0;
+	BITMAPFILEHEADER bmpheader;
+	BITMAPINFOHEADER bmpinfo;
+
+	//bmpheader.bfType = 0x4d42;
+	//bmpheader.bfReserved1 = 0;
+	//bmpheader.bfReserved2 = 0;
+	//bmpheader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+	//bmpheader.bfSize = bmpheader.bfOffBits + width * height * bpp / 8;
+	bmpheader.bfType = MAKEWORD(66, 77);
+	bmpheader.bfSize = lineBytes * height;
+	bmpheader.bfReserved1 = 0;
+	bmpheader.bfReserved2 = 0;
+	bmpheader.bfOffBits = 54;
+
+	bmpinfo.biSize = sizeof(BITMAPINFOHEADER);
+	bmpinfo.biWidth = width;
+	bmpinfo.biHeight = -height;
+	bmpinfo.biPlanes = 1;
+	bmpinfo.biBitCount = bpp;
+	bmpinfo.biCompression = BI_RGB;
+	bmpinfo.biSizeImage = (width * bpp + 31) / 32 * 4 * height;
+	bmpinfo.biXPelsPerMeter = 100;
+	bmpinfo.biYPelsPerMeter = 100;
+	bmpinfo.biClrUsed = 0;
+	bmpinfo.biClrImportant = 0;
+
+
+
+	DWORD dwInfoSize = width * height * bpp / 8;
+	HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, sizeof(bmpheader) + sizeof(bmpinfo) + dwInfoSize);
+	BYTE* pvData = (BYTE*)GlobalLock(hGlobal);
+	memcpy(pvData, &bmpheader, sizeof(bmpheader));
+	memcpy(pvData + sizeof(bmpheader), &bmpinfo, sizeof(bmpinfo));
+	memcpy(pvData + sizeof(bmpheader) + sizeof(bmpinfo), pPictureRGB.data[0], dwInfoSize);
+	GlobalUnlock(hGlobal);
+
+	IStream* pStream = NULL;
+	HRESULT hr = CreateStreamOnHGlobal(hGlobal, TRUE, &pStream);
+	Bitmap bmp(pStream);
 	int sourceWidth = 120;                                           //获得图片宽度,这个120和创建的120保持相同。
-	int sourceHeight = bmp.GetHeight();                 //获得图片宽度                                   
-	if (sourceHeight > 120)             
-	{
-		sourceHeight = 120;
-	}
-	else
-	{
-		sourceHeight = bmp.GetHeight();
-	}
+	int sourceHeight = 120;                 //获得图片宽度                                   
+	
 	Bitmap* pThumbnail = (Bitmap*)bmp.GetThumbnailImage(sourceWidth, sourceHeight, NULL, NULL); //设定缩略图的大小
 	HBITMAP hBmp;
 	pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
-	int a = m_imgList.Add(pImage, RGB(255, 255, 255));
+	int a = m_imgList->Add(pImage, RGB(255, 255, 255));
 	m_listCtl.InsertItem(LVIF_TEXT | LVIF_STATE, 0, NULL,
 		(0 % 2) == 0 ? LVIS_SELECTED : 0, LVIS_SELECTED, 0, 0);
+	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
+}
+void CTezhengDlg::DrawThumbnails() {
+	if (m_imgList != NULL) {
+		m_listCtl.DeleteAllItems();
+		delete(m_imgList);
+	}
+	
+	m_imgList = new CImageList();
+	m_imgList->Create(120, 120, ILC_COLOR32 | ILC_MASK, 50, 2);
+	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
 
+	//Bitmap bmp(_T("E:\\0520.bmp"));
+	//int sourceWidth = 120;                                           //获得图片宽度,这个120和创建的120保持相同。
+	//int sourceHeight = bmp.GetHeight();                 //获得图片宽度                                   
+	//if (sourceHeight > 120)             
+	//{
+	//	sourceHeight = 120;
+	//}
+	//else
+	//{
+	//	sourceHeight = bmp.GetHeight();
+	//}
+	//Bitmap* pThumbnail = (Bitmap*)bmp.GetThumbnailImage(sourceWidth, sourceHeight, NULL, NULL); //设定缩略图的大小
+	//HBITMAP hBmp;
+	//pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
+	//CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
+	//int a = m_imgList->Add(pImage, RGB(255, 255, 255));
+	//m_listCtl.InsertItem(LVIF_TEXT | LVIF_STATE, 0, NULL,
+	//	(0 % 2) == 0 ? LVIS_SELECTED : 0, LVIS_SELECTED, 0, 0);
 
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+	SaveAsBMP(pWnd->m_jiaohuDlg.frames[0], pWnd->m_jiaohuDlg.pixfmt,pWnd->m_jiaohuDlg.screen_w, pWnd->m_jiaohuDlg.screen_h,24);
+	
 
 }
 
 void CTezhengDlg::OnBnClickedButtonSelectall()
 {
 	// TODO: 在此添加控件通知处理程序代码
-
+	
 }
 
 

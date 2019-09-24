@@ -6,9 +6,6 @@
 #include "CJiaohuDlg.h"
 #include "afxdialogex.h"
 #include "SaveBmp.h"
-
-//*************************** ffmpeg ***************************
-#include <vector>
 #include "GetFeatureDlg.h"
 #include "CTezhengDlg.h"
 #pragma comment(lib,"gdiplus.lib")
@@ -112,15 +109,13 @@ int clipindex = 0;
 bool start_or_end = true;//true为开始时间，false为结束时间
 bool con_add = true;//继续添加虚线
 vector<int> timeclips;
-vector<AVFrame*> frames;
-vector<AVFrame*>::iterator it_frame;
 int keyframe_index;
 int timeclips_size;
 CRect rect;
 CWnd* pwnd;
 DWORD result;
 int nFrame = 0;//特征帧数
-int screen_w, screen_h;
+
 int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
 	rArrString.RemoveAll();
@@ -331,11 +326,6 @@ int CJiaohuDlg::get_allframes() {
 			log_s("Decode end or Error when feature extracting.");
 			return -1;
 		}
-		int videoHeight;
-		int videoWidth;
-		videoWidth = fepCodecCtx->width;
-		videoHeight = fepCodecCtx->height;
-	
 		AVPacket *InPack;
 		InPack = av_packet_alloc();
 		int len = 0;
@@ -484,7 +474,7 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s("Didn't parameters to contex.");
 		return -1;
 	}
-	
+	pDlg->pixfmt = pCodecCtx->pix_fmt;
 	pCodec = avcodec_find_decoder(pCodecCtx->codec_id);
 	if (pCodec == NULL) {
 		log_s("Codec not found.");
@@ -519,8 +509,8 @@ UINT videoplayer(LPVOID lpParam) {
 		log_s(SDL_GetError());
 		return -1;
 	}
-	screen_w = pCodecCtx->width;
-	screen_h = pCodecCtx->height;
+	pDlg->screen_w = pCodecCtx->width;
+	pDlg->screen_h = pCodecCtx->height;
 	isexcut_black = false;
 	screen = SDL_CreateWindowFrom(pDlg->GetDlgItem(IDC_PICTURE_PLAY)->GetSafeHwnd());
 
@@ -532,8 +522,8 @@ UINT videoplayer(LPVOID lpParam) {
 
 	sdlRect.x = 0;
 	sdlRect.y = 0;
-	sdlRect.w = screen_w;
-	sdlRect.h = screen_h;
+	sdlRect.w = pDlg->screen_w;
+	sdlRect.h = pDlg->screen_h;
 	video_tid = SDL_CreateThread(sfp_refresh_thread,NULL, (void*)pDlg);
 
 	//9.读取数据播放
@@ -621,7 +611,7 @@ UINT videoplayer(LPVOID lpParam) {
 			}
 		}
 		else if (event.type == SFM_SHOWPICTURE_EVENT) {
-			pFrame = frames[keyframe_index];
+			pFrame = pDlg->frames[keyframe_index];
 			if (sws_scale(pSwsCtx, (const uint8_t * const*)pFrame->data, pFrame->linesize, 0, pCodecCtx->height,
 				pFrameYUV->data, pFrameYUV->linesize) == 0) {
 				continue;
@@ -876,7 +866,6 @@ void CJiaohuDlg::OnLbnSelchangeListFrames()
 void CJiaohuDlg::OnBnClickedButtonDeleframe()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	//it_frame = find(frames.begin(), frames.end(), keyframe_index);
 	frames.erase(frames.begin()+keyframe_index);
 	m_listbox_frame.DeleteString(keyframe_index);
 	nFrame--;
@@ -1537,8 +1526,8 @@ static void close_stream(AVFormatContext* oc, OutputStream* ost) {
 UINT feature_extract(LPVOID lpParam) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
 	int ret;
-	int key_width;
-	int key_height;
+	//int key_width;
+	//int key_height;
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
@@ -1578,8 +1567,8 @@ UINT feature_extract(LPVOID lpParam) {
 	}
 	// 得到视频流编码上下文的指针
 	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
-	key_width = fepCodecCtx->width;
-	key_height = fepCodecCtx->height;
+	//key_width = fepCodecCtx->width;
+	//key_height = fepCodecCtx->height;
 
 	//  寻找视频流的解码器
 	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
@@ -1638,7 +1627,8 @@ UINT feature_extract(LPVOID lpParam) {
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
 	if (fmt->video_codec != AV_CODEC_ID_NONE) {
-		add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
+		//add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
+		add_stream(&video_st, oc, &video_codec, fmt->video_codec, pDlg->screen_w, pDlg->screen_h);
 		have_video = 1;
 		encode_video = 1;
 	}
@@ -1670,10 +1660,7 @@ UINT feature_extract(LPVOID lpParam) {
 			write_video_frame(oc, &video_st, OutFrame);
 		}
 	}
-	/* Write the trailer, if any. The trailer must be written before you  
-	* close the CodecContexts open when you wrote the header; otherwise  
-	* av_write_trailer() may try to use memory that was freed on  
-	* av_codec_close(). */  
+
 	av_write_trailer(oc);
 	/* Close each codec. */  
 	if (have_video)   

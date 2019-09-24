@@ -2,6 +2,7 @@
 #include "MySlider.h"
 #include <stdlib.h>
 #include <list>
+#include <vector>
 #include<Gdiplus.h>
 using namespace Gdiplus;
 // CJiaohuDlg 对话框
@@ -43,6 +44,8 @@ public:
 	CString VideoFilename;//视频文件的名字
 	CString suffix;
 	CString VideoFilename_nosuffix;
+	int screen_w, screen_h;
+	AVPixelFormat pixfmt;
 	bool newvideo = true; //判断是选择新文件还是从listbox里打开 以此来决定是否加入将文件名listbox
 	bool fea_is_vid = true;//feature的目录和video的目录是否为同一个
 	int m_video_duration;
@@ -53,8 +56,7 @@ public:
 	CStatic m_describe;
 	MySlider m_slider_seek;
 	CProgressCtrl m_progress;
-
-
+	vector<AVFrame*> frames;
 	GdiplusStartupInput m_pGdiplusStartupInput;
 	ULONG_PTR m_pGdiToken;
 
