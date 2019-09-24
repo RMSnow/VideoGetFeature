@@ -1258,7 +1258,8 @@
 #define WM_DDE_FIRST                    0x03E0
 #define IDC_TAB1                        1000
 #define IDC_BUTTON_FEATUREEXTRACT       1001
-#define IDC_LIST1                       1007
+#define IDC_LIST2                       1008
+#define IDC_LIST3                       1009
 #define IDC_SLIDER_SEEK                 1011
 #define IDC_BUTTON_PLAY                 1012
 #define IDC_BUTTON_GETTIME              1013
@@ -1385,6 +1386,7 @@
 #define stc22                           0x0455
 #define stc23                           0x0456
 #define stc24                           0x0457
+#define IDC_BUTTON_SELECTALL            1111
 #define stc25                           0x0458
 #define stc26                           0x0459
 #define stc27                           0x045a
@@ -1642,7 +1644,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        150
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1008
+#define _APS_NEXT_CONTROL_VALUE         1010
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

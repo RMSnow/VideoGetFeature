@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <list>
-
+#include<Gdiplus.h>
+using namespace Gdiplus;
 // CTezhengDlg 对话框
 
 class CTezhengDlg : public CDialogEx
@@ -23,6 +24,7 @@ protected:
 public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	void get_control_original_proportion();
+	void  DrawThumbnails();
 	CRect m_rect;
 	typedef struct Rect {
 	public:
@@ -43,4 +45,9 @@ public:
 	}control;
 	std::list<control*> m_con_list;
 	virtual BOOL OnInitDialog();
+	CImageList m_imgList;
+	afx_msg void OnBnClickedButtonSelectall();
+	CListCtrl m_listCtl;
+	ULONG_PTR m_gdiplusToken;
+	afx_msg void OnDestroy();
 };

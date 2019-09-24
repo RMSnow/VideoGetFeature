@@ -8,6 +8,7 @@
 #include<atlconv.h>
 #include <vector>
 #include "GetFeatureDlg.h"
+#include "CTezhengDlg.h"
 #pragma comment(lib,"gdiplus.lib")
 
 // CJiaohuDlg 对话框
@@ -1163,8 +1164,7 @@ void CJiaohuDlg::OnPaint()
 	
 }
 
-
-
+//命令行
 
 //UINT feature_extract(LPVOID lpParam) {
 //	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
@@ -1530,11 +1530,12 @@ static void close_stream(AVFormatContext* oc, OutputStream* ost) {
 	sws_freeContext(ost->sws_ctx);  
 	//swr_free(&ost->swr_ctx); 
 }
-int key_width;
-int key_height;
+
 UINT feature_extract(LPVOID lpParam) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
 	int ret;
+	int key_width;
+	int key_height;
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
@@ -1824,28 +1825,11 @@ void CJiaohuDlg::OnBnClickedButtonSave()
 	save_newvideo();
 }
 
-
-
-
-
-
-
-
-
-
-
-
 void CJiaohuDlg::OnBnClickedButtonQuick()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	//CTabCtrl* m_tab = (CTabCtrl*)::GetDlgItem(AfxGetApp()->GetMainWnd()->GetSafeHwnd(), IDC_TAB1);
 	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
 	pWnd->change();
-	
-	
-	
-	/*NMHDR   nmhdr;
-	nmhdr.code = TCN_SELCHANGE;
-	::SendMessage(::GetDlgItem(AfxGetApp()->GetMainWnd()->GetSafeHwnd(), IDC_TAB1), TCM_SETCURSEL, 01, NULL);
-	::SendMessage(GetParent()->m_hWnd, WM_NOTIFY, MAKELONG(TCN_SELCHANGE, 2), (LPARAM)(&nmhdr));*/
+	pWnd->m_tezhengDlg.DrawThumbnails();
+
 }
