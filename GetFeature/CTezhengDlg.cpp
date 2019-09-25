@@ -33,6 +33,7 @@ void CTezhengDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 
+	//DDX_Control(pDX, IDC_LIST2, m_listCtl);
 	DDX_Control(pDX, IDC_LIST2, m_listCtl);
 	DDX_Control(pDX, IDC_COMBO_DENSE, m_Combobox);
 }
@@ -110,7 +111,6 @@ void CTezhengDlg::get_control_original_proportion() {
 void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp)
 {
 	AVPicture pPictureRGB;//RGB图片
-
 	static struct SwsContext* img_convert_ctx;
 	img_convert_ctx = sws_getContext(width, height, pixfmt, width, height, \
 		AV_PIX_FMT_BGR24, SWS_BICUBIC, NULL, NULL, NULL);
@@ -156,9 +156,11 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	HBITMAP hBmp;
 	pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
+	COLORREF crMask = RGB(255, 0, 0);//透明色
 	int a = m_imgList->Add(pImage, RGB(255, 255, 255));
-	m_listCtl.InsertItem(LVIF_TEXT | LVIF_STATE, 0, NULL,
-		(0 % 2) == 0 ? LVIS_SELECTED : 0, LVIS_SELECTED, 0, 0);
+	//m_listCtl.InsertItem(LVIF_IMAGE | LVIF_STATE, 0, NULL, 0, LVIS_SELECTED, 0, 0);
+	m_listCtl.InsertItem(a, NULL, a);
+	avpicture_free(&pPictureRGB);
 	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
 }
 
@@ -167,7 +169,7 @@ void CTezhengDlg::DrawThumbnails() {
 		m_listCtl.DeleteAllItems();
 		delete(m_imgList);
 	}
-	
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
 	m_imgList = new CImageList();
 	m_imgList->Create(display_size, display_size, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
