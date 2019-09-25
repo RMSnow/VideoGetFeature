@@ -59,4 +59,7 @@ public:
 	afx_msg void OnBnClickedButtonSelectall();
 	afx_msg void OnDestroy();
 	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt,int width, int height, int bpp);
+	afx_msg void OnCbnSelchangeComboDense();
+	CComboBox m_Combobox;
+	int display_size;
 };
