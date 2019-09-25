@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <list>
 #include<Gdiplus.h>
+#include "MyList.h"
 using namespace Gdiplus;
 
 // CTezhengDlg 对话框
@@ -54,9 +55,10 @@ public:
 	std::list<control*> m_con_list;
 	virtual BOOL OnInitDialog();
 	CImageList* m_imgList = NULL;
-	CListCtrl m_listCtl;
+	//CListCtrl m_listCtl;
 	ULONG_PTR m_gdiplusToken;
 	afx_msg void OnBnClickedButtonSelectall();
 	afx_msg void OnDestroy();
 	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt,int width, int height, int bpp);
+	MyList m_listCtl;
 };

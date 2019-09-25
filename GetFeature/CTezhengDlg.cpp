@@ -33,6 +33,7 @@ void CTezhengDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 
+	//DDX_Control(pDX, IDC_LIST2, m_listCtl);
 	DDX_Control(pDX, IDC_LIST2, m_listCtl);
 }
 
@@ -53,7 +54,7 @@ BOOL CTezhengDlg::OnInitDialog()
 	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
 	// TODO:  在此添加额外的初始化
 	get_control_original_proportion();
-	
+	m_listCtl.ModifyStyle(0, LVS_ICON);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -102,7 +103,6 @@ void CTezhengDlg::get_control_original_proportion() {
 void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp)
 {
 	AVPicture pPictureRGB;//RGB图片
-
 	static struct SwsContext* img_convert_ctx;
 	img_convert_ctx = sws_getContext(width, height, pixfmt, width, height, \
 		AV_PIX_FMT_BGR24, SWS_BICUBIC, NULL, NULL, NULL);
@@ -115,11 +115,6 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	BITMAPFILEHEADER bmpheader;
 	BITMAPINFOHEADER bmpinfo;
 
-	//bmpheader.bfType = 0x4d42;
-	//bmpheader.bfReserved1 = 0;
-	//bmpheader.bfReserved2 = 0;
-	//bmpheader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-	//bmpheader.bfSize = bmpheader.bfOffBits + width * height * bpp / 8;
 	bmpheader.bfType = MAKEWORD(66, 77);
 	bmpheader.bfSize = lineBytes * height;
 	bmpheader.bfReserved1 = 0;
@@ -158,9 +153,11 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	HBITMAP hBmp;
 	pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
+	COLORREF crMask = RGB(255, 0, 0);//透明色
 	int a = m_imgList->Add(pImage, RGB(255, 255, 255));
-	m_listCtl.InsertItem(LVIF_TEXT | LVIF_STATE, 0, NULL,
-		(0 % 2) == 0 ? LVIS_SELECTED : 0, LVIS_SELECTED, 0, 0);
+	//m_listCtl.InsertItem(LVIF_IMAGE | LVIF_STATE, 0, NULL, 0, LVIS_SELECTED, 0, 0);
+	m_listCtl.InsertItem(a, NULL, a);
+	avpicture_free(&pPictureRGB);
 	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
 }
 void CTezhengDlg::DrawThumbnails() {
@@ -168,32 +165,14 @@ void CTezhengDlg::DrawThumbnails() {
 		m_listCtl.DeleteAllItems();
 		delete(m_imgList);
 	}
-	
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
 	m_imgList = new CImageList();
 	m_imgList->Create(120, 120, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
 
-	//Bitmap bmp(_T("E:\\0520.bmp"));
-	//int sourceWidth = 120;                                           //获得图片宽度,这个120和创建的120保持相同。
-	//int sourceHeight = bmp.GetHeight();                 //获得图片宽度                                   
-	//if (sourceHeight > 120)             
-	//{
-	//	sourceHeight = 120;
-	//}
-	//else
-	//{
-	//	sourceHeight = bmp.GetHeight();
-	//}
-	//Bitmap* pThumbnail = (Bitmap*)bmp.GetThumbnailImage(sourceWidth, sourceHeight, NULL, NULL); //设定缩略图的大小
-	//HBITMAP hBmp;
-	//pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
-	//CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
-	//int a = m_imgList->Add(pImage, RGB(255, 255, 255));
-	//m_listCtl.InsertItem(LVIF_TEXT | LVIF_STATE, 0, NULL,
-	//	(0 % 2) == 0 ? LVIS_SELECTED : 0, LVIS_SELECTED, 0, 0);
-
-	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
-	SaveAsBMP(pWnd->m_jiaohuDlg.frames[0], pWnd->m_jiaohuDlg.pixfmt,pWnd->m_jiaohuDlg.screen_w, pWnd->m_jiaohuDlg.screen_h,24);
+	int framesize = pWnd->m_jiaohuDlg.frames.size();
+	for(int i = framesize-1;i>=0;i--)
+		SaveAsBMP(pWnd->m_jiaohuDlg.frames[i], pWnd->m_jiaohuDlg.pixfmt, pWnd->m_jiaohuDlg.screen_w, pWnd->m_jiaohuDlg.screen_h, 24);
 	
 
 }

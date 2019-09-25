@@ -910,7 +910,6 @@ void CJiaohuDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 				}
 		}
 		CRect rect;
-		//CWnd* pwnd = GetDlgItem(IDC_SLIDER_SEEK); // 取得控件的指针
 		m_slider_seek.GetClientRect(&rect);
 		InvalidateRect(rect);
 		UpdateWindow();
