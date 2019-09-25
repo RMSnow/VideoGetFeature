@@ -198,15 +198,20 @@ void CTezhengDlg::OnCbnSelchangeComboDense()
 	// TODO: 在此添加控件通知处理程序代码
 	int nCursel = -1;
 	nCursel = m_Combobox.GetCurSel();
-	AfxMessageBox(nCursel);
+	//CString show;
+	//show.Format(_T("nCursel = %d"), nCursel);
+	//AfxMessageBox(show);
 	switch (nCursel)
 	{
 	case 0:
 		display_size = 200;
+		break;
 	case 1:
 		display_size = 120;
+		break;
 	case 2:
-		display_size = 40;
+		display_size = 80;
+		break;
 	default:
 		display_size = 120;
 		break;
