@@ -411,6 +411,7 @@
 #define SUBLANG_GERMAN_LIECHTENSTEIN    0x05
 #define SUBLANG_SAMI_LULE_SWEDEN        0x05
 #define SUBLANG_SPANISH_COSTA_RICA      0x05
+#define ISOLATIONPOLICY_BROWSER_MANIFEST_RESOURCE_ID 5
 #define SW_MINIMIZE                     6
 #define VK_XBUTTON2                     0x06
 #define WM_ACTIVATE                     0x0006
@@ -426,6 +427,7 @@
 #define SUBLANG_SAMI_SOUTHERN_NORWAY    0x06
 #define SUBLANG_SERBIAN_BOSNIA_HERZEGOVINA_LATIN 0x06
 #define SUBLANG_SPANISH_PANAMA          0x06
+#define WINAPI_FAMILY_GAMES             6
 #define SW_SHOWMINNOACTIVE              7
 #define WM_SETFOCUS                     0x0007
 #define WMSZ_BOTTOMLEFT                 7
@@ -1267,6 +1269,7 @@
 #define IDC_BUTTON_CUTVIDEO             1015
 #define IDC_BUTTON_CLIPEXT              1016
 #define IDC_BUTTON_DELEFRAME            1021
+#define IDC_BUTTON_DEL                  1021
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1389,6 +1392,7 @@
 #define stc24                           0x0457
 #define IDC_BUTTON_SELECTALL            1111
 #define stc25                           0x0458
+#define IDC_BUTTON_INVERT               1112
 #define stc26                           0x0459
 #define stc27                           0x045a
 #define stc28                           0x045b

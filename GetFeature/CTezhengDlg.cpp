@@ -7,8 +7,10 @@
 #include "GetFeatureDlg.h"
 #include "CTezhengDlg.h"
 #include "afxdialogex.h"
-#pragma comment(lib,"gdiplus.lib")
+#include "afxcmn.h"
 #include "SaveBmp.h"
+#include "MyList.h"
+
 
 #include <vector>
 #include <iostream>
@@ -16,6 +18,7 @@ using namespace std;
 
 
 #pragma comment(lib,"gdiplus.lib")
+
 // CTezhengDlg 对话框
 
 IMPLEMENT_DYNAMIC(CTezhengDlg, CDialogEx)
@@ -44,6 +47,8 @@ BEGIN_MESSAGE_MAP(CTezhengDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SELECTALL, &CTezhengDlg::OnBnClickedButtonSelectall)
 	ON_WM_DESTROY()
 	ON_CBN_SELCHANGE(IDC_COMBO_DENSE, &CTezhengDlg::OnCbnSelchangeComboDense)
+	ON_BN_CLICKED(IDC_BUTTON_INVERT, &CTezhengDlg::OnBnClickedButtonInvert)
+	ON_BN_CLICKED(IDC_BUTTON_DEL, &CTezhengDlg::OnBnClickedButtonDel)
 END_MESSAGE_MAP()
 
 
@@ -55,9 +60,9 @@ BOOL CTezhengDlg::OnInitDialog()
 	GdiplusStartupInput gdiplusStartupInput;
 	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
 	// TODO:  在此添加额外的初始化
+
 	get_control_original_proportion();
 	display_size = 120;
-
 	m_Combobox.ResetContent();
 	m_Combobox.AddString(_T("低"));
 	m_Combobox.AddString(_T("中"));
@@ -169,7 +174,9 @@ void CTezhengDlg::DrawThumbnails() {
 		m_listCtl.DeleteAllItems();
 		delete(m_imgList);
 	}
+
 	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+
 	m_imgList = new CImageList();
 	m_imgList->Create(display_size, display_size, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
@@ -183,7 +190,30 @@ void CTezhengDlg::DrawThumbnails() {
 void CTezhengDlg::OnBnClickedButtonSelectall()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	
+	m_listCtl.SetRedraw(FALSE);
+	for (int i = 0; i < m_listCtl.GetItemCount(); i++)
+	{
+		m_listCtl.SetItemState(i, LVIS_SELECTED, LVIS_SELECTED);
+	}
+	m_listCtl.SetRedraw(TRUE);
+}
+
+void CTezhengDlg::OnBnClickedButtonInvert()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	m_listCtl.SetRedraw(FALSE);
+	for (int i = 0; i < m_listCtl.GetItemCount(); i++)
+	{
+		if (m_listCtl.GetItemState(i, LVIS_SELECTED) == LVIS_SELECTED)
+		{
+			m_listCtl.SetItemState(i, 0, LVIS_SELECTED);
+		}
+		else
+		{
+			m_listCtl.SetItemState(i, LVIS_SELECTED, LVIS_SELECTED);
+		}
+	}
+	m_listCtl.SetRedraw(TRUE);
 }
 
 
@@ -220,4 +250,20 @@ void CTezhengDlg::OnCbnSelchangeComboDense()
 		break;
 	}
 	DrawThumbnails();
+}
+
+void CTezhengDlg::OnBnClickedButtonDel()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+	m_listCtl.SetRedraw(FALSE);
+	for (int i = 0; i < m_listCtl.GetItemCount(); i++)
+	{
+		if (m_listCtl.GetItemState(i, LVIS_SELECTED) == LVIS_SELECTED) 
+		{
+			pWnd->m_jiaohuDlg.frames.erase(pWnd->m_jiaohuDlg.frames.begin()+i);
+		}
+	}
+	DrawThumbnails();
+	m_listCtl.SetRedraw(TRUE);
 }

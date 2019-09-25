@@ -64,4 +64,7 @@ public:
 	CComboBox m_Combobox;
 	int display_size;
 	MyList m_listCtl;
+	afx_msg void OnBnClickedButtonInvert();
+	afx_msg void OnItemchangedList(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnBnClickedButtonDel();
 };

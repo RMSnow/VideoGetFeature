@@ -1,14 +1,15 @@
 #include "pch.h"
 #include "MyList.h"
+#include <iostream>
 #pragma comment(lib,"gdiplus.lib")
+
 BEGIN_MESSAGE_MAP(MyList, CListCtrl)
-	
 	ON_NOTIFY_REFLECT(NM_CUSTOMDRAW, &MyList::OnNMCustomdraw)
 END_MESSAGE_MAP()
 
 MyList::MyList()
 {
-
+	display_size = 120;
 }
 
 MyList::~MyList()
@@ -30,7 +31,8 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 	{
 	
 		LVITEM rItem;
-		int nItem = static_cast<int>(pLVCD->nmcd.dwItemSpec);
+		int nItem = static_cast<int>(pLVCD->nmcd.dwItemSpec); //item number
+
 		CDC* pDC = CDC::FromHandle(pLVCD->nmcd.hdc);
 		COLORREF crBkgnd;
 		BOOL bListHasFocus;
@@ -59,13 +61,13 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		IMAGEINFO ii;
 		if (pImageList)
 		{
-			
 			pImageList->GetImageInfo(rItem.iImage, &ii);
 			pImageList->Draw(pDC, rItem.iImage, CPoint(rcItem.left + (nBoundsWidth -
 				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10), uFormat);
-
 		}
-		if (rItem.state & LVIS_SELECTED)//when selected draw the Frameline
+
+		//»­¿ò
+		if (rItem.state & LVIS_SELECTED)
 		{
 			Graphics g(pDC->m_hDC);
 			Pen pen(Color(0, 0, 255), 10);
@@ -79,8 +81,4 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		}
 	*pResult = CDRF_SKIPDEFAULT;
 	}
-	
 }
-
-
-
