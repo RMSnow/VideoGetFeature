@@ -173,7 +173,7 @@ void CTezhengDlg::DrawThumbnails() {
 	m_imgList = new CImageList();
 	m_imgList->Create(display_size, display_size, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
-	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+
 	int nFrames = pWnd->m_jiaohuDlg.frames.size();
 	for (int i = 0; i < nFrames; i++) {
 		SaveAsBMP(pWnd->m_jiaohuDlg.frames[i], pWnd->m_jiaohuDlg.pixfmt, pWnd->m_jiaohuDlg.screen_w, pWnd->m_jiaohuDlg.screen_h, 24);
@@ -200,22 +200,23 @@ void CTezhengDlg::OnCbnSelchangeComboDense()
 	// TODO: 在此添加控件通知处理程序代码
 	int nCursel = -1;
 	nCursel = m_Combobox.GetCurSel();
-	//CString show;
-	//show.Format(_T("nCursel = %d"), nCursel);
-	//AfxMessageBox(show);
 	switch (nCursel)
 	{
 	case 0:
 		display_size = 200;
+		m_listCtl.display_size = 200;
 		break;
 	case 1:
 		display_size = 120;
+		m_listCtl.display_size = 120;
 		break;
 	case 2:
 		display_size = 80;
+		m_listCtl.display_size = 80;
 		break;
 	default:
 		display_size = 120;
+		m_listCtl.display_size = 120;
 		break;
 	}
 	DrawThumbnails();

@@ -11,5 +11,6 @@ public:
 	MyList();
 	virtual ~MyList();
 	afx_msg void OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult);
+	int display_size =120;
 };
 

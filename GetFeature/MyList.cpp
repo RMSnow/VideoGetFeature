@@ -17,8 +17,6 @@ MyList::~MyList()
 }
 
 
-
-
 void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NMLVCUSTOMDRAW* pLVCD = reinterpret_cast<NMLVCUSTOMDRAW*>(pNMHDR);
@@ -70,14 +68,14 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		if (rItem.state & LVIS_SELECTED)//when selected draw the Frameline
 		{
 			Graphics g(pDC->m_hDC);
-			Pen pen(Color(255, 0, 0), 5);
-			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth -(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, 120, 120);
+			Pen pen(Color(0, 0, 255), 10);
+			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth -(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, display_size, display_size);
 		}
 		else
 		{
 			Graphics g(pDC->m_hDC);
-			Pen pen(Color(221, 224, 231), 5);
-			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth - (ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, 120, 120);
+			Pen pen(Color(221, 224, 231), 10);
+			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth - (ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, display_size, display_size);
 		}
 	*pResult = CDRF_SKIPDEFAULT;
 	}
