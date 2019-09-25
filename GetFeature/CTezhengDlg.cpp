@@ -35,6 +35,7 @@ void CTezhengDlg::DoDataExchange(CDataExchange* pDX)
 
 	//DDX_Control(pDX, IDC_LIST2, m_listCtl);
 	DDX_Control(pDX, IDC_LIST2, m_listCtl);
+	DDX_Control(pDX, IDC_COMBO_DENSE, m_Combobox);
 }
 
 
@@ -42,6 +43,7 @@ BEGIN_MESSAGE_MAP(CTezhengDlg, CDialogEx)
 	ON_WM_SIZE()
 	ON_BN_CLICKED(IDC_BUTTON_SELECTALL, &CTezhengDlg::OnBnClickedButtonSelectall)
 	ON_WM_DESTROY()
+	ON_CBN_SELCHANGE(IDC_COMBO_DENSE, &CTezhengDlg::OnCbnSelchangeComboDense)
 END_MESSAGE_MAP()
 
 
@@ -54,7 +56,13 @@ BOOL CTezhengDlg::OnInitDialog()
 	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
 	// TODO:  在此添加额外的初始化
 	get_control_original_proportion();
-	m_listCtl.ModifyStyle(0, LVS_ICON);
+	display_size = 120;
+
+	m_Combobox.ResetContent();
+	m_Combobox.AddString(_T("低"));
+	m_Combobox.AddString(_T("中"));
+	m_Combobox.AddString(_T("高"));
+	m_Combobox.SetCurSel(1);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -133,8 +141,6 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	bmpinfo.biClrUsed = 0;
 	bmpinfo.biClrImportant = 0;
 
-
-
 	DWORD dwInfoSize = width * height * bpp / 8;
 	HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, sizeof(bmpheader) + sizeof(bmpinfo) + dwInfoSize);
 	BYTE* pvData = (BYTE*)GlobalLock(hGlobal);
@@ -145,11 +151,8 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 
 	IStream* pStream = NULL;
 	HRESULT hr = CreateStreamOnHGlobal(hGlobal, TRUE, &pStream);
-	Bitmap bmp(pStream);
-	int sourceWidth = 120;                                           //获得图片宽度,这个120和创建的120保持相同。
-	int sourceHeight = 120;                 //获得图片宽度                                   
-	
-	Bitmap* pThumbnail = (Bitmap*)bmp.GetThumbnailImage(sourceWidth, sourceHeight, NULL, NULL); //设定缩略图的大小
+	Bitmap bmp(pStream);                         
+	Bitmap* pThumbnail = (Bitmap*)bmp.GetThumbnailImage(display_size, display_size, NULL, NULL); //设定缩略图的大小
 	HBITMAP hBmp;
 	pThumbnail->GetHBITMAP(Color(255, 255, 255), &hBmp);
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
@@ -160,6 +163,7 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	avpicture_free(&pPictureRGB);
 	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
 }
+
 void CTezhengDlg::DrawThumbnails() {
 	if (m_imgList != NULL) {
 		m_listCtl.DeleteAllItems();
@@ -167,14 +171,13 @@ void CTezhengDlg::DrawThumbnails() {
 	}
 	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
 	m_imgList = new CImageList();
-	m_imgList->Create(120, 120, ILC_COLOR32 | ILC_MASK, 50, 2);
+	m_imgList->Create(display_size, display_size, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
-
-	int framesize = pWnd->m_jiaohuDlg.frames.size();
-	for(int i = framesize-1;i>=0;i--)
+	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+	int nFrames = pWnd->m_jiaohuDlg.frames.size();
+	for (int i = 0; i < nFrames; i++) {
 		SaveAsBMP(pWnd->m_jiaohuDlg.frames[i], pWnd->m_jiaohuDlg.pixfmt, pWnd->m_jiaohuDlg.screen_w, pWnd->m_jiaohuDlg.screen_h, 24);
-	
-
+	}	
 }
 
 void CTezhengDlg::OnBnClickedButtonSelectall()
@@ -189,4 +192,26 @@ void CTezhengDlg::OnDestroy()
 	CDialogEx::OnDestroy();
 	GdiplusShutdown(m_gdiplusToken);
 	// TODO: 在此处添加消息处理程序代码
+}
+
+
+void CTezhengDlg::OnCbnSelchangeComboDense()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	int nCursel = -1;
+	nCursel = m_Combobox.GetCurSel();
+	AfxMessageBox(nCursel);
+	switch (nCursel)
+	{
+	case 0:
+		display_size = 200;
+	case 1:
+		display_size = 120;
+	case 2:
+		display_size = 40;
+	default:
+		display_size = 120;
+		break;
+	}
+	DrawThumbnails();
 }

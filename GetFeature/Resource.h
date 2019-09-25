@@ -1397,6 +1397,7 @@
 #define IDC_BUTTON_QUICK                1117
 #define stc31                           0x045e
 #define stc32                           0x045f
+#define IDC_COMBO_DENSE                 1119
 #define lst1                            0x0460
 #define lst2                            0x0461
 #define lst3                            0x0462
@@ -1643,7 +1644,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        150
+#define _APS_NEXT_RESOURCE_VALUE        151
 #define _APS_NEXT_COMMAND_VALUE         32771
 #define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           101
