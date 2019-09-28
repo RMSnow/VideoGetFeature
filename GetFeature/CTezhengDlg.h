@@ -72,6 +72,7 @@ public:
 	vector<AVFrame*> tezhengframes;
 	vector<smp> smp_read_data;
 	CFont font;
+	int display_kind = 1;
 
 
 	virtual BOOL OnInitDialog();
@@ -86,13 +87,15 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 
 	void get_control_original_proportion();
-	void  DrawThumbnails();
-	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp);
+	void DrawThumbnails(int kind);
+	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, smp smp_item, int kind, int width, int height, int bpp);
 	int get_allteframes();
 	int tesave_newvideo();
 	void SetHScroll();
 	void SetHScroll2();
 	void GetSMPFile();
 	afx_msg void OnBnClickedButtonDelfile();
-	afx_msg void OnBnClickedRadioButtonGrade();
+	afx_msg void OnBnClickedRadioButtonmo();
+	afx_msg void OnBnClickedRadioButtonfrade();
+	afx_msg void OnBnClickedRadioButtoncluster();
 };

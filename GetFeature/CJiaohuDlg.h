@@ -53,6 +53,7 @@ public:
 	CString suffix;
 	CString VideoFilename_nosuffix;
 	CString smpname;
+	CString Jiao_SmpFilepath;
 	int screen_w, screen_h;
 	AVPixelFormat pixfmt;
 	bool newvideo = true; //判断是选择新文件还是从listbox里打开 以此来决定是否加入将文件名listbox
@@ -67,7 +68,6 @@ public:
 	CProgressCtrl m_progress;
 	vector<AVFrame*> frames;
 	vector<smp> smp_data;
-
 	vector<frame_item> frame_items;
 	GdiplusStartupInput m_pGdiplusStartupInput;
 	ULONG_PTR m_pGdiToken;
@@ -101,6 +101,7 @@ public:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedButtonCutvideo();
 	afx_msg void OnBnClickedButtonGettime();
+	afx_msg void OnBnClickedButtonJiaoconfig();
 	static int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString);
 	void thread_stop();
 	int JEeature_Extract(int kind1,int kind2);
@@ -127,8 +128,8 @@ public:
 	}control;
 	std::list<control*> m_con_list;
 
+	void  JiaoGetSMPFile();
 
-
-	afx_msg void OnBnClickedButtonJiaoconfig();
+	
 };
 int sfp_refresh_thread(void* opaque);

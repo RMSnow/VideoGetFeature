@@ -119,7 +119,7 @@ int timeclips_size;
 CRect rect;
 CWnd* pwnd;
 DWORD result;
-int nFrame = 0;//特征帧数
+
 
 int CJiaohuDlg::SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
@@ -217,7 +217,8 @@ int sfp_refresh_thread(void *opaque) {
 	return 0;
 }
 int CJiaohuDlg::get_allframes() {
-	
+	    int nFrame = 0;//特征帧数
+		frames.swap(vector<AVFrame*>());
 		AVFormatContext* fepFmtCtx = NULL;
 		AVCodecContext* fepCodecCtx = NULL;
 		AVCodec* fepCodec = NULL;
@@ -281,9 +282,7 @@ int CJiaohuDlg::get_allframes() {
 		AVPacket *InPack;
 		InPack = av_packet_alloc();
 		int len = 0;
-
-		int nComplete = 0;
-		
+		int nComplete = 0;	
 		CString frame_num;
 		while ((av_read_frame(fepFmtCtx, InPack) >= 0)) {
 			
@@ -416,9 +415,14 @@ UINT videoplayer(LPVOID lpParam) {
 	int Count3 = pDlg->SplitString(pDlg->VideoFilename_nosuffix, szSplit3, szList3, FALSE);
 	CString flag = szList3.GetAt(Count3 - 1);
 	if (flag == _T("FD")) {
+		pDlg->Jiao_SmpFilepath = pDlg->VideoFilepath + _T(".smp");
+		pDlg->JiaoGetSMPFile(); //打开smp文件
 		pDlg->get_allframes();
 	}
 	else if (flag == _T("JC")) {
+		pDlg->Jiao_SmpFilepath = pDlg->VideoFilepath + _T(".smp");
+		
+		pDlg->JiaoGetSMPFile(); //打开smp文件
 		pDlg->get_allframes();
 	}
 
@@ -659,7 +663,7 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 			thread_pause = false;
 			thread_exit = false;
 			con_add = true;
-			nFrame = 0;
+			//nFrame = 0;
 
 			m_slider_seek.GetClientRect(&rect);
 			play_thread = AfxBeginThread(videoplayer, this);
@@ -830,7 +834,8 @@ void CJiaohuDlg::OnBnClickedButtonDeleframe()
 	jiaoneedsave = true;
 	frames.erase(frames.begin()+keyframe_index);
 	m_listbox_frame.DeleteString(keyframe_index);
-	nFrame--;
+	keyframe_index--;
+	//nFrame--;
 	thread_pause = true;
 	is_showpicture = 1;
 }
@@ -914,7 +919,7 @@ void CJiaohuDlg::OnLbnDblclkListVideoclip()
 			thread_pause = false;
 			thread_exit = false;
 			con_add = true;	
-			nFrame = 0;
+			//nFrame = 0;
 			m_slider_seek.GetClientRect(&rect);
 			m_listbox_frame.ResetContent();
 			CString s;
@@ -1329,6 +1334,7 @@ static int write_video_frame(AVFormatContext* oc, OutputStream* ost, AVFrame* ke
 	frame = get_video_frame(ost,keyframe);  
 
 	if (oc->oformat->flags & AVFMT_RAWPICTURE) {   
+		AfxMessageBox(_T("12"));
 		/* a hack to avoid data copy with some raw video muxers */  
 		AVPacket pkt;   
 		av_init_packet(&pkt);   
@@ -1342,6 +1348,9 @@ static int write_video_frame(AVFormatContext* oc, OutputStream* ost, AVFrame* ke
 		av_packet_rescale_ts(&pkt, c->time_base, ost->st->time_base);    
 		ret = av_interleaved_write_frame(oc, &pkt); 
 	} else {
+		
+		/*AVPacket *pPacket;
+		pPacket = av_packet_alloc();*/
 		AVPacket pkt = { 0 };     
 		av_init_packet(&pkt);   
 		/* encode the image */   
@@ -1374,8 +1383,10 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	//CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
 	CString ckind1;
 	CString ckind2;
+	CString suffix;
 	if (kind1 == 1) {
 		ckind1 = "-X5";
+		suffix = ".flv";
 		m_describe.SetWindowText(_T("正在提取X5特效..."));
 		CRect rect;
 		m_describe.GetClientRect(&rect);
@@ -1384,6 +1395,7 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	}
 	if (kind1 == 2) {
 		ckind1 = "-YT";
+		suffix = ".mp4";
 		m_describe.SetWindowText(_T("正在提取YT特效..."));
 		CRect rect;
 		m_describe.GetClientRect(&rect);
@@ -1464,7 +1476,6 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	OutFrame = av_frame_alloc();
 	int nComplete = 0;
 
-
 	OutputStream video_st = { 0 };
 	const char* filename;
 	const char* smpfilename;
@@ -1475,8 +1486,8 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	int encode_video = 0;
 	AVDictionary* opt = NULL;
 	/* Initialize libavcodec, and register all codecs and formats. */
-	CString newclipname = VideoFilename_nosuffix + "_x" + ".flv";
-	CString	smpname = VideoFilename_nosuffix + "_x" + ".smp";
+	CString newclipname = VideoFilename_nosuffix + ckind1+ckind2 + suffix;
+	CString	smpname = newclipname +".smp";
 	CString outfile = strVideoFolderPath + "//" + newclipname;
 	CString smpoutfile = strVideoFolderPath + "//" + smpname;
 	
@@ -1493,8 +1504,6 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 		
 		return 1;
 	}
-
-		
 	fmt = oc->oformat;
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
@@ -1588,7 +1597,7 @@ void CJiaohuDlg::OnBnClickedButtonFeatureextract()
 	// TODO: 在此添加控件通知处理程序代码
 
 	CKindDlg kk;
-	int kind2;
+	int kind2 = 0;
 	if (kk.DoModal() == IDOK) {
 		if (!thread_pause) {
 			thread_pause = !thread_pause;
@@ -1612,11 +1621,13 @@ void CJiaohuDlg::OnBnClickedButtonFeatureextract()
 		if (m_jradiao2.GetCheck()) {
 			kind2 = 2;
 		}
-		if (kk.check1) {
+		if (kind2 != 0) {
+			if (kk.check1) {
 			JEeature_Extract(1,kind2);
 		}
 		if (kk.check2) {
 			JEeature_Extract(2,kind2);
+		}
 		}
 		
 	}
@@ -1657,6 +1668,7 @@ int CJiaohuDlg::save_newvideo() {
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
 	if (!oc) {
+		AfxMessageBox(_T("123"));
 		printf("Could not deduce output format from file extension: using MPEG.\n");
 		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
 	}
@@ -1723,10 +1735,24 @@ void CJiaohuDlg::OnBnClickedButtonSave()
 	// TODO: 在此添加控件通知处理程序代码
 	if (jiaoneedsave) {
 		save_newvideo();
+		jiaoneedsave = false;
+		m_describe.SetWindowText(_T("保存成功"));
 	}
 	
 }
-
+void  CJiaohuDlg::JiaoGetSMPFile()
+{
+	smp ismp;
+	int size;
+	smp_data.swap(vector<smp>());
+	ifstream ifile(Jiao_SmpFilepath, ios::binary);
+	ifile.read((char*)& size, 4); //读取关键帧数量
+	for (int i = 0; i < size; i++)
+	{
+		ifile.read((char*)& ismp, sizeof(smp));
+		smp_data.push_back(ismp);
+	}
+}
 void CJiaohuDlg::OnBnClickedButtonQuick()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1740,7 +1766,9 @@ void CJiaohuDlg::OnBnClickedButtonQuick()
 	pWnd->m_tezhengDlg.listbox_filepath.ResetContent();
 	pWnd->m_tezhengDlg.tezhengframes.swap(vector<AVFrame*>());
 	pWnd->m_tezhengDlg.tezhengframes.assign(frames.begin(), frames.end());
-	pWnd->m_tezhengDlg.DrawThumbnails();
+	pWnd->m_tezhengDlg.smp_read_data.swap(vector<smp>());
+	pWnd->m_tezhengDlg.smp_read_data.assign(smp_data.begin(), smp_data.end());
+	pWnd->m_tezhengDlg.DrawThumbnails(1);
 	pWnd->m_tezhengDlg.listbox_filepath.AddString(VideoFilepath);
 	pWnd->m_tezhengDlg.SetHScroll();
 	

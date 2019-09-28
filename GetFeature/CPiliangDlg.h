@@ -82,6 +82,7 @@ public:
 	CString suffix;
 	CString feature_filename;
 	CString feature_filepath;
+	CString smp_path;
 	CListBox m_listpath;
 	CListBox m_listfeaturefile;
 	CListBox m_listinfo;
@@ -91,8 +92,8 @@ public:
 	int videoIndex = -1;
 	AVPixelFormat pipixfmt;
 	vector<AVFrame*> piframes;
+	
 	vector<smp> pismp;
-	int nFrame = 0;
 	int pikeyframe_index = 0;
 	CWinThread* piplay_thread = NULL;
 	CButton m_pradio1;

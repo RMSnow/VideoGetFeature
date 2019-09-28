@@ -43,7 +43,7 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		bListHasFocus = (this->GetSafeHwnd() == ::GetFocus());
 		//get the image index and selected state of the item being draw
 		ZeroMemory(&rItem, sizeof(LVITEM));
-		rItem.mask = LVIF_IMAGE | LVIF_STATE;
+		rItem.mask = LVIF_IMAGE | LVIF_STATE|LVFIF_TEXT;
 		rItem.iItem = nItem;
 		rItem.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
 		GetItem(&rItem);
@@ -63,24 +63,31 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		if (pImageList)
 		{
 			pImageList->GetImageInfo(rItem.iImage, &ii);
+			
 			pImageList->Draw(pDC, rItem.iImage, CPoint(rcItem.left + (nBoundsWidth -
-				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10), uFormat);
+				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + (rcItem.bottom-rcItem.top-ii.rcImage.bottom+ii.rcImage.top)/2), uFormat);
 		}
-		CString sText = _T("12");
-		//pDC->DrawText(sText, CRect::CRect(rcItem.left + (rcItem.left-rcItem.right)/2, rcItem.top + , rcText.right, rcText.bottom + 60), DT_VCENTER);
+		CString sText;
+		sText = this->GetItemText(nItem, 0);
+		if (sText != _T("")) {
+			pDC->SetBkMode(OPAQUE);
+			pDC->SetBkColor(RGB(255, 255, 255));
+			pDC->DrawText(sText, CRect::CRect(rcItem.left + (rcItem.right - rcItem.left) / 2 - 15, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2 - 20, rcItem.left + (rcItem.right - rcItem.left) / 2 + 15, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2), DT_VCENTER);
+		}
+		
 
 		//»­¿ò
 		if (rItem.state & LVIS_SELECTED)
 		{
 			Graphics g(pDC->m_hDC);
 			Pen pen(Color(0, 0, 255), 10);
-			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth -(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, display_size, display_size);
+			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth -(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + (rcItem.bottom - rcItem.top - ii.rcImage.bottom + ii.rcImage.top) / 2, display_size, display_size);
 		}
 		else
 		{
 			Graphics g(pDC->m_hDC);
 			Pen pen(Color(221, 224, 231), 10);
-			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth - (ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, display_size, display_size);
+			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth - (ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + (rcItem.bottom - rcItem.top - ii.rcImage.bottom + ii.rcImage.top) / 2, display_size, display_size);
 		}
 	*pResult = CDRF_SKIPDEFAULT;
 	}
@@ -95,8 +102,9 @@ void MyList::OnLButtonDown(UINT nFlags, CPoint point)
 	lvinfo.pt = point;
 	LVITEM rItem;
 	int nItem = CListCtrl::HitTest(&lvinfo);
-	if (nItem != -1)
-		rItem.iItem = lvinfo.iItem;
+	if (nItem != -1) {
+
+	rItem.iItem = lvinfo.iItem;
 	GetItem(&rItem);
 	if (CListCtrl::GetItemState(lvinfo.iItem, LVIS_SELECTED) == 0)
 	{
@@ -106,4 +114,7 @@ void MyList::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		CListCtrl::SetItemState(lvinfo.iItem, 0, LVIS_SELECTED);
 	}
+
+	}
+	
 }

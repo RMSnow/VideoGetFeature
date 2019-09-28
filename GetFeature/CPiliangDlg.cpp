@@ -471,13 +471,14 @@ static void close_stream(AVFormatContext* oc, OutputStream* ost) {
 int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	CString ckind1;
 	CString ckind2;
+	CString pisuffix;
 	if (kind1 == 1) {
 		ckind1 = "-X5";
-
+		pisuffix = ".flv";
 	}
 	if (kind1 == 2) {
 		ckind1 = "-YT";
-	
+		pisuffix = ".mp4";
 	}
 	if (kind2 == 1) {
 		ckind2 = "-FD";
@@ -576,12 +577,10 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	int encode_video = 0;
 	AVDictionary* opt = NULL;
 	/* Initialize libavcodec, and register all codecs and formats. */
-
-	CString outfile_name = VideoFilename_nosuffix +ckind1+ckind2+".flv";
-	feature_filename = outfile_name;
-	CString outfile_path = strVideoFolderPath + outfile_name;
-	feature_filepath = outfile_path;
-	filename = W2A(outfile_path);
+	feature_filename = VideoFilename_nosuffix + ckind1 + ckind2 + pisuffix;
+	feature_filepath = strVideoFolderPath +feature_filename;
+	smp_path = feature_filepath + _T(".smp");
+	filename = W2A(feature_filepath);
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
 	if (!oc) {
@@ -668,11 +667,11 @@ void CPiliangDlg::OnBnClickedButtonPiextract()
 				if (kk.check1) {
 					PEeature_Extract(1,kind2);
 					Sleep(500);
-					m_listfeaturefile.AddString(feature_filepath);
+					m_listfeaturefile.AddString(smp_path);
 					SetHScroll2();
 					m_listinfo.AddString(_T("==提取成功=="));
 					m_listinfo.AddString(_T("特征保存在视频所在目录："));
-					m_listinfo.AddString(feature_filepath);
+					m_listinfo.AddString(smp_path);
 					m_listinfo.AddString(_T("----------------"));
 					SetHScroll3();
 				
@@ -680,11 +679,11 @@ void CPiliangDlg::OnBnClickedButtonPiextract()
 				if (kk.check2) {
 					PEeature_Extract(2,kind2);
 					Sleep(500);
-					m_listfeaturefile.AddString(feature_filepath);
+					m_listfeaturefile.AddString(smp_path);
 					SetHScroll2();
 					m_listinfo.AddString(_T("==提取成功=="));
 					m_listinfo.AddString(_T("特征保存在视频所在目录："));
-					m_listinfo.AddString(feature_filepath);
+					m_listinfo.AddString(smp_path);
 					m_listinfo.AddString(_T("----------------"));
 					SetHScroll3();
 
@@ -716,7 +715,8 @@ void CPiliangDlg::OnBnClickedButtonPiclose()
 	}
 }
 int CPiliangDlg::get_allpiframes() {
-	nFrame = 0;
+	piframes.swap(vector<AVFrame*>());
+	int nFrame = 0;
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
@@ -1006,7 +1006,9 @@ void CPiliangDlg::OnLbnSelchangeListboxPifeaturefile()
 	if (num != 0) {
 		int nSel = m_listfeaturefile.GetCurSel();
 		if (nSel != CB_ERR) {
-			m_listfeaturefile.GetText(nSel, VideoFilepath);
+			m_listfeaturefile.GetText(nSel, smp_path);
+			int n = smp_path.ReverseFind('.');
+			VideoFilepath = smp_path.Left(n);
 			piframes.swap(vector<AVFrame*>());
 			m_listframes.ResetContent();
 			get_allpiframes();
@@ -1040,7 +1042,8 @@ void CPiliangDlg::OnBnClickedButtonPidelframe()
 	m_listframes.GetText(pikeyframe_index, framename);
 	m_listframes.DeleteString(pikeyframe_index);
 	m_listinfo.AddString(_T("删除")+framename);
-	nFrame--;
+	pikeyframe_index--;
+	//nFrame--;
 	piis_showpicture = 1;
 }
 int CPiliangDlg::pisave_newvideo() {
@@ -1127,8 +1130,9 @@ void CPiliangDlg::OnBnClickedButtonPisave()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	if (pineedsave) {
+		pineedsave = false;
 		pisave_newvideo();
-		m_listinfo.AddString(_T("保存文件：")+VideoFilepath);
+		m_listinfo.AddString(_T("保存文件：")+smp_path);
 	}
 
 }
@@ -1148,7 +1152,7 @@ void CPiliangDlg::OnBnClickedButtonPiquick()
 	pWnd->m_tezhengDlg.listbox_filepath.ResetContent();
 	pWnd->m_tezhengDlg.tezhengframes.swap(vector<AVFrame*>());
 	pWnd->m_tezhengDlg.tezhengframes.assign(piframes.begin(), piframes.end());
-	pWnd->m_tezhengDlg.DrawThumbnails();
+	pWnd->m_tezhengDlg.DrawThumbnails(1);
 	pWnd->m_tezhengDlg.listbox_filepath.AddString(VideoFilepath);
 	pWnd->m_tezhengDlg.SetHScroll();
 }
