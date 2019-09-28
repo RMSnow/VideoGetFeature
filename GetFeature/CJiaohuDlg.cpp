@@ -1475,8 +1475,8 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	int encode_video = 0;
 	AVDictionary* opt = NULL;
 	/* Initialize libavcodec, and register all codecs and formats. */
-	CString newclipname = VideoFilename_nosuffix + "_x" + ".flv";
-	CString	smpname = VideoFilename_nosuffix + "_x" + ".smp";
+	CString newclipname = VideoFilename_nosuffix + ckind1+ckind2 + ".flv";
+	CString	smpname = VideoFilename_nosuffix + ckind1 + ckind2 + ".flv.smp";
 	CString outfile = strVideoFolderPath + "//" + newclipname;
 	CString smpoutfile = strVideoFolderPath + "//" + smpname;
 	

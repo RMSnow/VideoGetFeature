@@ -755,11 +755,10 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 	// 显示打开文件对话框   
 	if (IDOK == fileDlg.DoModal())
 	{
-
 		FolderPath = fileDlg.GetFolderPath();
 		CString fn = fileDlg.GetFileTitle();
 		SmpFilepath = fileDlg.GetPathName();
-		VideoFilepath = FolderPath +_T("\\") +  fn + _T(".flv");
+		VideoFilepath = FolderPath + _T("\\") + fn;
 
 		GetSMPFile(); //打开smp文件
 		listbox_filepath.AddString(SmpFilepath);
