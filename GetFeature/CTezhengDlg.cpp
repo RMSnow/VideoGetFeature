@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 
@@ -747,19 +748,40 @@ int CTezhengDlg::get_allteframes() {
 void CTezhengDlg::OnBnClickedButtonTeopen()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
+	TCHAR szFilter[] = _T("*.smp|*.smp|");
 	// 构造打开文件对话框   
 	CFileDialog fileDlg(TRUE, NULL, NULL, 0, szFilter, this);
 
 	// 显示打开文件对话框   
 	if (IDOK == fileDlg.DoModal())
 	{
-		VideoFilepath = fileDlg.GetPathName();
-		listbox_filepath.AddString(VideoFilepath);
+
+		FolderPath = fileDlg.GetFolderPath();
+		CString fn = fileDlg.GetFileTitle();
+		SmpFilepath = fileDlg.GetPathName();
+		VideoFilepath = FolderPath +_T("\\") +  fn + _T(".flv");
+
+		GetSMPFile(); //打开smp文件
+		listbox_filepath.AddString(SmpFilepath);
 		SetHScroll();
 		tezhengframes.swap(vector<AVFrame*>());
 		get_allteframes();
 		DrawThumbnails();
+	}
+}
+
+void  CTezhengDlg::GetSMPFile()
+{
+	smp ismp;
+	int size;
+
+	ifstream ifile(SmpFilepath, ios::binary);
+	
+	ifile.read((char*)&size, 4); //读取关键帧数量
+	for (int i = 0; i < size; i++)
+	{
+		ifile.read((char*)&ismp, sizeof(smp));
+		smp_read_data.push_back(ismp);
 	}
 }
 

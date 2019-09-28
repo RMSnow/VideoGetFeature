@@ -10,6 +10,8 @@
 #include "CTezhengDlg.h"
 #include <iostream>
 #include <fstream>
+#include <iterator>
+#include <vector>
 #include "CKindDlg.h"
 #pragma comment(lib,"gdiplus.lib")
 
@@ -297,15 +299,6 @@ int CJiaohuDlg::get_allframes() {
 					frames.push_back(OutFrame);
 					frame_num.Format(_T("frame%d"), nFrame);
 					m_listbox_frame.AddString(frame_num);
-					
-					
-					//把数据写到smp文件中去
-					smp ismp;
-					ismp.setIndex(nFrame);
-					ismp.setGrade(100 - nFrame); // just for test
-					ismp.setCluster(nFrame % 4);
-					smp_data.push_back(ismp);
-
 					nFrame++;
 				}
 			}
@@ -862,6 +855,8 @@ BOOL CJiaohuDlg::OnInitDialog()
 	m_timelength.SetFont(&font);
 	m_describe.SetFont(&font);
 	m_jradiao1.SetCheck(true);
+
+
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -1480,10 +1475,10 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	int encode_video = 0;
 	AVDictionary* opt = NULL;
 	/* Initialize libavcodec, and register all codecs and formats. */
-	CString newclipname = pDlg->VideoFilename_nosuffix + "_x" + ".flv";
-	CString	smpname = pDlg->VideoFilename_nosuffix + "_x" + ".smp";
-	CString outfile = pDlg->strVideoFolderPath + "//" + newclipname;
-	CString smpoutfile = pDlg->strVideoFolderPath + "//" + smpname;
+	CString newclipname = VideoFilename_nosuffix + "_x" + ".flv";
+	CString	smpname = VideoFilename_nosuffix + "_x" + ".smp";
+	CString outfile = strVideoFolderPath + "//" + newclipname;
+	CString smpoutfile = strVideoFolderPath + "//" + smpname;
 	
 	filename = W2A(outfile);
 	smpfilename = W2A(smpoutfile);
@@ -1529,6 +1524,7 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 		return 1;
 	}
 	int k = 0;
+	smp ismp;
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
 
@@ -1536,23 +1532,16 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 		if (nComplete > 0 && OutFrame->key_frame) {
 			//解码一帧成功
 			write_video_frame(oc, &video_st, OutFrame);
-			list_item.kind = k;
-			list_item.score = 90;
-			frame_items.push_back(list_item);
+
+			//把数据写到smp文件中去
+			ismp.setIndex(k);
+			ismp.setGrade(100 - k); // just for test
+			ismp.setCluster(k / 4);
+			smp_data.push_back(ismp);
+
 			k++;
 		}
 	}
-	//smpname = outfile + _T(".smp");
-	//ofstream os(smpname, ios::binary);
-	//int size1 = frame_items.size();
-	//os.write((const char*)& size1, 4);
-	//os.write((const char*)& frame_items[0], size1 * sizeof(list_item));
-	//os.close();
-
-	//将smp写入文件
-	ofstream ofile(smpfilename);
-	ofile.write((char*)&pDlg->smp_data, sizeof(pDlg->smp_data));
-	ofile.close();
 
 	av_write_trailer(oc);
 	/* Close each codec. */  
@@ -1560,7 +1549,23 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 		close_stream(oc, &video_st);    
 	if (!(fmt->flags & AVFMT_NOFILE))    
 		/* Close the output file. */     
-		avio_closep(&oc->pb); 
+		avio_closep(&oc->pb);
+
+
+	//将smp写入文件
+	int size = smp_data.size();
+	vector<smp>::iterator it;
+	ofstream ofile(smpfilename, ios::binary);
+	ofile.write((const char*)&size, 4);
+	for (it = smp_data.begin(); it != smp_data.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	smp_data.clear(); // 清空smp_data vector
+	ofile.close();
+
+
 	/* free the stream */   
 	avformat_free_context(oc); 
 	m_listbox_videoclip.AddString(newclipname);
@@ -1571,6 +1576,7 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(1);
 	GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(1);
 	GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
 	m_describe.SetWindowText(_T("提取成功"));
 	m_progress.ShowWindow(SW_HIDE);
 	return 0;
