@@ -94,4 +94,5 @@ public:
 	void SetHScroll2();
 	void GetSMPFile();
 	afx_msg void OnBnClickedButtonDelfile();
+	afx_msg void OnBnClickedRadioButtonGrade();
 };

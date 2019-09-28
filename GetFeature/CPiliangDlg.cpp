@@ -197,10 +197,17 @@ void CPiliangDlg::OnBnClickedButtonPiopenfolder()
 	// 显示打开文件对话框   
 	if (IDOK == fileDlg.DoModal())
 	{
+		FolderPath = fileDlg.GetFolderPath();
+		CString fn = fileDlg.GetFileTitle();
 		VideoFilepath = fileDlg.GetPathName();
+		SmpFilepath = FolderPath + _T("\\") + fn + _T(".flv.smp");
+
+		CString show;
+		show.Format(_T("smp:%s, viode:%s"), SmpFilepath, VideoFilepath);
+		AfxMessageBox(show);
+
 		m_listpath.AddString(VideoFilepath);
 		SetHScroll();
-
 	}
 }
 
@@ -795,11 +802,22 @@ int CPiliangDlg::get_allpiframes() {
 				nFrame++;
 			}
 		}
-
 	}
-
 	avcodec_close(fepCodecCtx);
 	av_free(fepFmtCtx);
+
+	////从文件加载smp信息
+	//smp ismp;
+	//int size;
+
+	//ifstream ifile(SmpFilepath, ios::binary);
+
+	//ifile.read((char*)&size, 4); //读取关键帧数量
+	//for (int i = 0; i < size; i++)
+	//{
+	//	ifile.read((char*)&ismp, sizeof(smp));
+	//	smp_read_data.push_back(ismp);
+	//}
 
 }
 
@@ -1016,6 +1034,8 @@ void CPiliangDlg::OnBnClickedButtonPidelframe()
 	// TODO: 在此添加控件通知处理程序代码
 	CString framename;
 	piframes.erase(piframes.begin() + pikeyframe_index);
+
+
 	pineedsave = true;
 	m_listframes.GetText(pikeyframe_index, framename);
 	m_listframes.DeleteString(pikeyframe_index);

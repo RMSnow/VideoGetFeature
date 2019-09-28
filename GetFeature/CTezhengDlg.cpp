@@ -56,6 +56,7 @@ BEGIN_MESSAGE_MAP(CTezhengDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_TEOPEN, &CTezhengDlg::OnBnClickedButtonTeopen)
 	ON_LBN_SELCHANGE(IDC_LISTBOX_FILEPATH, &CTezhengDlg::OnLbnSelchangeListboxFilepath)
 	ON_BN_CLICKED(IDC_BUTTON_DELFILE, &CTezhengDlg::OnBnClickedButtonDelfile)
+	ON_BN_CLICKED(IDC_RADIO_BUTTON_GRADE, &CTezhengDlg::OnBnClickedRadioButtonGrade)
 END_MESSAGE_MAP()
 
 
@@ -812,4 +813,11 @@ void CTezhengDlg::OnBnClickedButtonDelfile()
 			listbox_filepath.DeleteString(nSel);
 		}
 	}
+}
+
+
+void CTezhengDlg::OnBnClickedRadioButtonGrade()
+{
+	// TODO: 按分数排序显示
+
 }
