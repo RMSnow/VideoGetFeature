@@ -206,7 +206,7 @@ void CGetFeatureDlg::teexect_reslut(int result) {
 	}
 	case IDNO:
 		m_tezhengDlg.tezhengframes.swap(vector<AVFrame*>());
-		m_tezhengDlg.DrawThumbnails();
+		m_tezhengDlg.DrawThumbnails(1);
 		m_tezhengDlg.needsave = false;
 		break;
 	}

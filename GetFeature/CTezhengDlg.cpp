@@ -56,6 +56,9 @@ BEGIN_MESSAGE_MAP(CTezhengDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_TEOPEN, &CTezhengDlg::OnBnClickedButtonTeopen)
 	ON_LBN_SELCHANGE(IDC_LISTBOX_FILEPATH, &CTezhengDlg::OnLbnSelchangeListboxFilepath)
 	ON_BN_CLICKED(IDC_BUTTON_DELFILE, &CTezhengDlg::OnBnClickedButtonDelfile)
+	ON_BN_CLICKED(IDC_RADIO_BUTTONMO, &CTezhengDlg::OnBnClickedRadioButtonmo)
+	ON_BN_CLICKED(IDC_RADIO_BUTTONFRADE, &CTezhengDlg::OnBnClickedRadioButtonfrade)
+	ON_BN_CLICKED(IDC_RADIO_BUTTONCLUSTER, &CTezhengDlg::OnBnClickedRadioButtoncluster)
 END_MESSAGE_MAP()
 
 
@@ -75,7 +78,6 @@ BOOL CTezhengDlg::OnInitDialog()
 	m_Combobox.AddString(_T("高"));
 	m_Combobox.SetCurSel(1);
 	font.CreatePointFont(120, _T("新宋体"));
-	listbox_filepath.SetFont(&font);
 	m_listinfo.SetFont(&font);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -121,7 +123,7 @@ void CTezhengDlg::get_control_original_proportion() {
 		hwndChild = ::GetWindow(hwndChild, GW_HWNDNEXT);
 	}
 }
-void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp)
+void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, smp smp_item,int kind,int width, int height, int bpp)
 {
 	AVPicture pPictureRGB;//RGB图片
 	static struct SwsContext* img_convert_ctx;
@@ -171,27 +173,38 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
 	COLORREF crMask = RGB(255, 0, 0);//透明色
 	int a = m_imgList->Add(pImage, RGB(255, 255, 255));
-
-	m_listCtl.InsertItem(a , _T("12"), a);
+	if (kind == 1) {
+		m_listCtl.InsertItem(a , NULL, a);
+	}
+	if (kind == 2) {
+		CString grade;
+		grade.Format(_T("%d"), smp_item.rgb_grade);
+		m_listCtl.InsertItem(a, grade, a);
+	}
+	if (kind == 3) {
+		CString cluster_id;
+		cluster_id.Format(_T("%d"), smp_item.cluster_id);
+		m_listCtl.InsertItem(a, cluster_id, a);
+		m_listCtl.InsertItem(a, _T("12"), a);
+	}
+	
 	avpicture_free(&pPictureRGB);
 	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
 }
 
-void CTezhengDlg::DrawThumbnails() {
+void CTezhengDlg::DrawThumbnails(int dikind) {
 	if (m_imgList != NULL) {
 		m_listCtl.DeleteAllItems();
 		delete(m_imgList);
 	}
-
+	
 	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
-
 	m_imgList = new CImageList();
 	m_imgList->Create(display_size, display_size, ILC_COLOR32 | ILC_MASK, 50, 2);
 	m_listCtl.SetImageList(m_imgList, LVSIL_NORMAL);
-
 	int nFrames = tezhengframes.size();
 	for (int i = 0; i < nFrames; i++) {
-		SaveAsBMP(tezhengframes[i], tepixfmt, screen_w, screen_h, 24);
+		SaveAsBMP(tezhengframes[i], tepixfmt, smp_read_data[i],dikind,screen_w, screen_h, 24);
 	}	
 }
 
@@ -257,7 +270,7 @@ void CTezhengDlg::OnCbnSelchangeComboDense()
 		m_listCtl.display_size = 120;
 		break;
 	}
-	DrawThumbnails();
+	DrawThumbnails(display_kind);
 }
 
 void CTezhengDlg::OnBnClickedButtonDel()
@@ -273,7 +286,7 @@ void CTezhengDlg::OnBnClickedButtonDel()
 			needsave = true;
 		}
 	}
-	DrawThumbnails();
+	DrawThumbnails(display_kind);
 	m_listCtl.SetRedraw(TRUE);
 }
 
@@ -666,7 +679,7 @@ void CTezhengDlg::OnBnClickedButtonSave2()
 
 }
 int CTezhengDlg::get_allteframes() {
-
+	tezhengframes.swap(vector<AVFrame*>());
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
@@ -759,13 +772,13 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 		CString fn = fileDlg.GetFileTitle();
 		SmpFilepath = fileDlg.GetPathName();
 		VideoFilepath = FolderPath + _T("\\") + fn;
-
+		smp_read_data.swap(vector<smp>());
 		GetSMPFile(); //打开smp文件
 		listbox_filepath.AddString(SmpFilepath);
 		SetHScroll();
 		tezhengframes.swap(vector<AVFrame*>());
 		get_allteframes();
-		DrawThumbnails();
+		DrawThumbnails(display_kind);
 	}
 }
 
@@ -795,7 +808,7 @@ void CTezhengDlg::OnLbnSelchangeListboxFilepath()
 			listbox_filepath.GetText(nSel,VideoFilepath);
 			tezhengframes.swap(vector<AVFrame*>());
 			get_allteframes();
-			DrawThumbnails();	
+			DrawThumbnails(display_kind);
 		}
 	}
 }
@@ -811,4 +824,28 @@ void CTezhengDlg::OnBnClickedButtonDelfile()
 			listbox_filepath.DeleteString(nSel);
 		}
 	}
+}
+
+
+void CTezhengDlg::OnBnClickedRadioButtonmo()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	display_kind = 1;
+	DrawThumbnails(display_kind);
+}
+
+
+void CTezhengDlg::OnBnClickedRadioButtonfrade()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	display_kind = 2;
+	DrawThumbnails(display_kind);
+}
+
+
+void CTezhengDlg::OnBnClickedRadioButtoncluster()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	display_kind = 3;
+	DrawThumbnails(display_kind);
 }

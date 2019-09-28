@@ -72,7 +72,7 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 		if (sText != _T("")) {
 			pDC->SetBkMode(OPAQUE);
 			pDC->SetBkColor(RGB(255, 255, 255));
-			pDC->DrawText(sText, CRect::CRect(rcItem.left + (rcItem.right - rcItem.left) / 2 - 10, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2 - 20, rcItem.left + (rcItem.right - rcItem.left) / 2 + 10, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2), DT_VCENTER);
+			pDC->DrawText(sText, CRect::CRect(rcItem.left + (rcItem.right - rcItem.left) / 2 - 15, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2 - 20, rcItem.left + (rcItem.right - rcItem.left) / 2 + 15, rcItem.top + (rcItem.bottom - rcItem.top + ii.rcImage.bottom - ii.rcImage.top) / 2), DT_VCENTER);
 		}
 		
 

@@ -40,31 +40,12 @@ END_MESSAGE_MAP()
 
 // CKindDlg 消息处理程序
 
-
-
-
-
-
-
-
 void CKindDlg::OnBnClickedOk()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	
-	if (m_kindcheck1.GetCheck()) {
-		check1 = true;
-	}
-	else
-	{
-		check1 = false;
-	}
-	if (m_kindcheck2.GetCheck()) {
-		check2 = true;
-	}
-	else
-	{
-		check2 = false;
-	}
+
+
 	CDialogEx::OnOK();
 }
 
@@ -72,12 +53,39 @@ void CKindDlg::OnBnClickedOk()
 void CKindDlg::OnBnClickedCheck1()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	GetDlgItem(IDOK)->EnableWindow(1);
+	if (m_kindcheck1.GetCheck()) {
+		check1 = true;
+	}
+	else
+	{
+		check1 = false;
+	}
+	if (!check1 && !check2) {
+		GetDlgItem(IDOK)->EnableWindow(0);
+	}
+	else
+	{
+		GetDlgItem(IDOK)->EnableWindow(1);
+	}
+	
 }
 
 
 void CKindDlg::OnBnClickedCheck2()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	GetDlgItem(IDOK)->EnableWindow(1);
+	if (m_kindcheck2.GetCheck()) {
+		check2 = true;
+	}
+	else
+	{
+		check2 = false;
+	}
+	if (!check1 && !check2) {
+		GetDlgItem(IDOK)->EnableWindow(0);
+	}
+	else
+	{
+		GetDlgItem(IDOK)->EnableWindow(1);
+	}
 }
