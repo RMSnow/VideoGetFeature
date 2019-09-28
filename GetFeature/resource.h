@@ -242,7 +242,6 @@
 #define TME_LEAVE                       0x00000002
 #define CS_HREDRAW                      0x0002
 #define CF_BITMAP                       2
-#define IDCANCEL                        2
 #define BN_HILITE                       2
 #define BST_INDETERMINATE               0x0002
 #define HDS_BUTTONS                     0x0002
@@ -910,6 +909,7 @@
 #define IDD_DIALOG4_CHACHONG            149
 #define VK_OEM_FJ_LOYA                  0x95
 #define VK_OEM_FJ_ROYA                  0x96
+#define IDD_DIALOG_KIND                 152
 #define VK_LSHIFT                       0xA0
 #define WM_NCMOUSEMOVE                  0x00A0
 #define VK_RSHIFT                       0xA1
@@ -1260,13 +1260,24 @@
 #define IDC_BUTTON_FEATUREEXTRACT       1001
 #define IDC_LIST2                       1008
 #define IDC_LIST3                       1009
-#define IDC_LIST1                       1010
 #define IDC_SLIDER_SEEK                 1011
 #define IDC_BUTTON_PLAY                 1012
+#define IDC_PICTURESHOW                 1012
 #define IDC_BUTTON_GETTIME              1013
+#define IDC_BUTTON_TEOPEN               1013
+#define IDC_BUTTON_PICLOSE              1014
 #define IDC_BUTTON_CUTVIDEO             1015
+#define IDCANCEL                        1015
 #define IDC_BUTTON_CLIPEXT              1016
+#define IDC_CHECK1                      1016
+#define IDC_LISTBOX_FILEPATH            1018
+#define IDC_LISTBOX_PIPATH              1018
+#define IDC_CHECK2                      1018
+#define IDC_BUTTON_PIOPENFOLDER         1019
+#define IDC_BUTTON_PIEXTRACT            1020
 #define IDC_BUTTON_DELEFRAME            1021
+#define IDC_BUTTON_DEL                  1021
+#define IDC_BUTTON_PIDELFRAME           1021
 #define CF_GDIOBJLAST                   0x03FF
 #define _WIN32_WINNT_NT4                0x0400
 #define _WIN32_IE_IE40                  0x0400
@@ -1284,13 +1295,20 @@
 #define psh1                            0x0400
 #define _WIN32_IE_IE401                 0x0401
 #define psh2                            0x0401
+#define IDC_LISTBOX_PIINFO              1025
 #define psh3                            0x0402
 #define IDC_LIST_FRAMES                 1026
+#define IDC_LISTBOX_INFO                1026
+#define IDC_LISTBOX_PIFRAMES            1026
 #define psh4                            0x0403
 #define IDC_LIST_VIDEOCLIP              1027
 #define psh5                            0x0404
 #define IDC_BUTTON_DELCLIP              1028
+#define IDC_BUTTON_DELFILE              1028
+#define IDC_BUTTON_PIDELPATH            1028
 #define psh6                            0x0405
+#define IDC_BUTTON_SAVE2                1029
+#define IDC_BUTTON_PISAVE               1029
 #define psh7                            0x0406
 #define IDC_PICTURE_PLAY                1030
 #define psh8                            0x0407
@@ -1302,7 +1320,9 @@
 #define psh12                           0x040b
 #define psh13                           0x040c
 #define psh14                           0x040d
+#define IDC_RADIO_BUTTON1               1037
 #define psh15                           0x040e
+#define IDC_RADIO_BUTTON2               1038
 #define psh16                           0x040f
 #define _WIN32_WINDOWS                  0x0410
 #define chx1                            0x0410
@@ -1335,10 +1355,12 @@
 #define rad4                            0x0423
 #define IDC_COMBOX_FEATURE              1059
 #define rad5                            0x0424
+#define IDC_LISTBOX_PIFEATUREFILE       1060
 #define rad6                            0x0425
 #define rad7                            0x0426
 #define rad8                            0x0427
 #define rad9                            0x0428
+#define IDC_BUTTON_PIQUICK              1064
 #define rad10                           0x0429
 #define rad11                           0x042a
 #define rad12                           0x042b
@@ -1389,18 +1411,23 @@
 #define stc24                           0x0457
 #define IDC_BUTTON_SELECTALL            1111
 #define stc25                           0x0458
+#define IDC_BUTTON_INVERT               1112
 #define stc26                           0x0459
 #define stc27                           0x045a
 #define stc28                           0x045b
 #define stc29                           0x045c
+#define IDC_RADIO_BUTTONMO              1116
 #define stc30                           0x045d
 #define IDC_BUTTON_QUICK                1117
 #define stc31                           0x045e
 #define stc32                           0x045f
 #define IDC_COMBO_DENSE                 1119
+#define IDC_BUTTON_JIAOCONFIG           1119
 #define lst1                            0x0460
 #define lst2                            0x0461
+#define IDC_JIAORADIAO1                 1121
 #define lst3                            0x0462
+#define IDC_JIAOHURADIAO2               1122
 #define lst4                            0x0463
 #define lst5                            0x0464
 #define lst6                            0x0465
@@ -1644,9 +1671,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        151
+#define _APS_NEXT_RESOURCE_VALUE        154
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1011
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

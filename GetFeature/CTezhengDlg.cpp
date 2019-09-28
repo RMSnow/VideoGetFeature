@@ -170,7 +170,7 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width,
 	CBitmap* pImage = CBitmap::FromHandle(hBmp);         //转换成CBitmap格式位图
 	COLORREF crMask = RGB(255, 0, 0);//透明色
 	int a = m_imgList->Add(pImage, RGB(255, 255, 255));
-	//m_listCtl.InsertItem(LVIF_IMAGE | LVIF_STATE, 0, NULL, 0, LVIS_SELECTED, 0, 0);
+
 	m_listCtl.InsertItem(a , _T("12"), a);
 	avpicture_free(&pPictureRGB);
 	GlobalFree(hGlobal); // 使用Bitmap完后，需要释放资源，以免造成内存泄漏。
