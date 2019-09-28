@@ -188,13 +188,73 @@ HCURSOR CGetFeatureDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+void CGetFeatureDlg::teexect_reslut(int result) {
+	switch (result)
+	{
+	case IDYES:
+	{
+		//点击YES按钮的具体实现功能
+		m_tezhengDlg.tesave_newvideo();
+		m_jiaohuDlg.m_listbox_frame.ResetContent();
+		CString info1 = m_tezhengDlg.VideoFilepath + _T(":特征文件保存完毕！");
+		m_tezhengDlg.m_listinfo.AddString(info1);
+		CString info2 = _T("保存文件:") + m_tezhengDlg.VideoFilepath;
+		m_tezhengDlg.m_listinfo.AddString(info2);
+		m_tezhengDlg.SetHScroll2();
+		m_tezhengDlg.needsave = false;
+		break;
+	}
+	case IDNO:
+		m_tezhengDlg.tezhengframes.swap(vector<AVFrame*>());
+		m_tezhengDlg.DrawThumbnails();
+		m_tezhengDlg.needsave = false;
+		break;
+	}
 
+}
+void CGetFeatureDlg::piexect_reslut(int result) {
+	switch (result)
+	{
+	case IDYES:
+	{
+		//点击YES按钮的具体实现功能
+		m_piliangDlg.pisave_newvideo();
+		m_piliangDlg.m_listinfo.AddString(_T("保存文件：") + m_piliangDlg.VideoFilepath);
+		m_piliangDlg.pineedsave = false;
+		break;
+	}
+	case IDNO:
+		m_piliangDlg.piframes.swap(vector<AVFrame*>());
+		m_piliangDlg.m_listframes.ResetContent();
+		m_piliangDlg.pineedsave = false;
+		break;
+	}
+
+}
+void CGetFeatureDlg::jiaoexect_reslut(int result) {
+	switch (result)
+	{
+	case IDYES:
+	{
+		//点击YES按钮的具体实现功能
+		m_jiaohuDlg.save_newvideo();
+		m_jiaohuDlg.jiaoneedsave = false;
+		break;
+	}
+	case IDNO:
+		m_jiaohuDlg.frames.swap(vector<AVFrame*>());
+		m_jiaohuDlg.m_listbox_frame.ResetContent();
+		m_jiaohuDlg.jiaoneedsave = false;
+		break;
+	}
+
+}
 
 void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 在此添加控件通知处理程序代码
 	*pResult = 0;
-
+	int result;
 	//CRect tabRect;    // 标签控件客户区的Rect   
 
 	// 获取标签控件客户区Rect，并对其调整，以适合放置标签页   
@@ -208,32 +268,74 @@ void CGetFeatureDlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
 	switch (m_tab.GetCurSel())
 	{
 	case 0:
+		if (m_tezhengDlg.needsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"),NULL, MB_YESNO);
+			teexect_reslut(result);
+		}
+		if (m_piliangDlg.pineedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			piexect_reslut(result);
+		}
 		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
 		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_jiaohuDlg.isexcut_black = true;
+		m_jiaohuDlg.m_listbox_frame.ResetContent();
 		break;
 	case 1:
+		if (m_tezhengDlg.needsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			teexect_reslut(result);
+		}
+		if (m_jiaohuDlg.jiaoneedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			jiaoexect_reslut(result);
+		}
 		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
 		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
+		m_piliangDlg.isexcut_black = true;
+		m_piliangDlg.m_listframes.ResetContent();
 		break;
 	case 2:
+		if (m_piliangDlg.pineedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			piexect_reslut(result);
+		}
+		if (m_jiaohuDlg.jiaoneedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			jiaoexect_reslut(result);
+		}
 		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
 		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		break;
 	case 3:
+		if (m_tezhengDlg.needsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			teexect_reslut(result);
+		}
+		if (m_piliangDlg.pineedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			piexect_reslut(result);
+		}
+		if (m_jiaohuDlg.jiaoneedsave) {
+			result = MessageBox(TEXT("是否保存当前修改？"), NULL, MB_YESNO);
+			jiaoexect_reslut(result);
+		}
 		m_jiaohuDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_piliangDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_tezhengDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_HIDEWINDOW);
 		m_chachongDlg.SetWindowPos(NULL, tabRect.left, tabRect.top, tabRect.Width(), tabRect.Height(), SWP_SHOWWINDOW);
+
 		break;
 	default:
 		break;
 	}
+
 }
 
 

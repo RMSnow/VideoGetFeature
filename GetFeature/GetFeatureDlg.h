@@ -42,6 +42,9 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	void change();
+	void teexect_reslut(int result);
+	void piexect_reslut(int result);
+	void jiaoexect_reslut(int result);
 	afx_msg void OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult);
 	CTabCtrl m_tab;
 	CRect tabRect;   // 标签控件客户区的位置和大小   
