@@ -5,6 +5,8 @@
 #include <list>
 #include <vector>
 #include<Gdiplus.h>
+#include <iostream>
+#include <fstream>
 using namespace Gdiplus;
 // CJiaohuDlg 对话框
 #define SDL_MAIN_HANDLED 
@@ -38,13 +40,19 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-
+	struct frame_item {
+		int kind;
+		int score;
+	};
+	frame_item list_item;
+	bool isexcut_black = true;
 	CString strFeatureFolderPath;//特征保存文件夹路径
 	CString VideoFilepath;//视频文件的路径
 	CString strVideoFolderPath;//视频文件所属文件夹的路径
 	CString VideoFilename;//视频文件的名字
 	CString suffix;
 	CString VideoFilename_nosuffix;
+	CString smpname;
 	int screen_w, screen_h;
 	AVPixelFormat pixfmt;
 	bool newvideo = true; //判断是选择新文件还是从listbox里打开 以此来决定是否加入将文件名listbox
@@ -60,8 +68,16 @@ public:
 	vector<AVFrame*> frames;
 	vector<smp> smp_data;
 
+	vector<frame_item> frame_items;
 	GdiplusStartupInput m_pGdiplusStartupInput;
 	ULONG_PTR m_pGdiToken;
+	CComboBox m_combox_feature;
+	CListBox m_listbox_frame;
+	CFont font;
+	CWinThread* play_thread = NULL;
+	CButton m_jradiao1;
+	CButton m_jradiao2;
+	bool jiaoneedsave = false;
 
 	afx_msg void OnBnClickedButtonOpen();
 	afx_msg void OnBnClickedButtonPlay();
@@ -72,17 +88,25 @@ public:
 	afx_msg void OnBnClickedButtonPlayFrame();
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnLbnDblclkListVideoclip();
-	virtual BOOL OnInitDialog();
-	//int SplitVideo(int startTime, int endTime, const char* pDst);
-	afx_msg void OnBnClickedButtonCutvideo();
-	afx_msg void OnBnClickedButtonGettime();
-	void thread_stop();
-	int save_newvideo();
-	int get_allframes();
 	afx_msg void OnDestroy();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnBnClickedButtonDelclip();
+	afx_msg void OnPaint();
+	afx_msg void OnBnClickedButtonFeatureextract();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnLbnSelchangeListFrames();
+	afx_msg void OnBnClickedButtonDeleframe();
+	afx_msg void OnBnClickedButtonSave();
+	afx_msg void OnBnClickedButtonQuick();
+	virtual BOOL OnInitDialog();
+	afx_msg void OnBnClickedButtonCutvideo();
+	afx_msg void OnBnClickedButtonGettime();
+	static int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString);
+	void thread_stop();
+	int JEeature_Extract(int kind1,int kind2);
+	int save_newvideo();
+	int get_allframes();
 	void get_control_original_proportion();
-	void SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num);
 	CRect m_rect;
 	typedef struct Rect {
 	public:
@@ -103,15 +127,8 @@ public:
 	}control;
 	std::list<control*> m_con_list;
 
-	afx_msg void OnBnClickedButtonDelclip();
-	afx_msg void OnPaint();
-	afx_msg void OnBnClickedButtonFeatureextract();
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	CComboBox m_combox_feature;
-	CListBox m_listbox_frame;
-	afx_msg void OnLbnSelchangeListFrames();
-	afx_msg void OnBnClickedButtonDeleframe();
-	afx_msg void OnBnClickedButtonSave();
-	afx_msg void OnBnClickedButtonQuick();
+
+
+	afx_msg void OnBnClickedButtonJiaoconfig();
 };
 int sfp_refresh_thread(void* opaque);

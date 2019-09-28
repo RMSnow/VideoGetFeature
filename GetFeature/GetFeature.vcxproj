@@ -194,6 +194,7 @@
   <ItemGroup>
     <ClInclude Include="CChachongDlg.h" />
     <ClInclude Include="CJiaohuDlg.h" />
+    <ClInclude Include="CKindDlg.h" />
     <ClInclude Include="CPiliangDlg.h" />
     <ClInclude Include="CTezhengDlg.h" />
     <ClInclude Include="framework.h" />
@@ -210,6 +211,7 @@
   <ItemGroup>
     <ClCompile Include="CChachongDlg.cpp" />
     <ClCompile Include="CJiaohuDlg.cpp" />
+    <ClCompile Include="CKindDlg.cpp" />
     <ClCompile Include="CPiliangDlg.cpp" />
     <ClCompile Include="CTezhengDlg.cpp" />
     <ClCompile Include="GetFeature.cpp" />

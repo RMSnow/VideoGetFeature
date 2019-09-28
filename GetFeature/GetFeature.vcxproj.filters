@@ -54,6 +54,9 @@
     <ClInclude Include="MyList.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="CKindDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="smpfile.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -87,6 +90,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MyList.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CKindDlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

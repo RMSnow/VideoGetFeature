@@ -5,6 +5,7 @@
 
 BEGIN_MESSAGE_MAP(MyList, CListCtrl)
 	ON_NOTIFY_REFLECT(NM_CUSTOMDRAW, &MyList::OnNMCustomdraw)
+	ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 MyList::MyList()
@@ -65,6 +66,8 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 			pImageList->Draw(pDC, rItem.iImage, CPoint(rcItem.left + (nBoundsWidth -
 				(ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10), uFormat);
 		}
+		CString sText = _T("12");
+		//pDC->DrawText(sText, CRect::CRect(rcItem.left + (rcItem.left-rcItem.right)/2, rcItem.top + , rcText.right, rcText.bottom + 60), DT_VCENTER);
 
 		//画框
 		if (rItem.state & LVIS_SELECTED)
@@ -80,5 +83,27 @@ void MyList::OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult)
 			g.DrawRectangle(&pen, rcItem.left + (nBoundsWidth - (ii.rcImage.right - ii.rcImage.left)) / 2, rcItem.top + 10, display_size, display_size);
 		}
 	*pResult = CDRF_SKIPDEFAULT;
+	}
+}
+
+void MyList::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	//CListCtrl::OnLButtonDown(nFlags, point);
+	LVHITTESTINFO lvinfo;
+	lvinfo.pt = point;
+	LVITEM rItem;
+	int nItem = CListCtrl::HitTest(&lvinfo);
+	if (nItem != -1)
+		rItem.iItem = lvinfo.iItem;
+	GetItem(&rItem);
+	if (CListCtrl::GetItemState(lvinfo.iItem, LVIS_SELECTED) == 0)
+	{
+		CListCtrl::SetItemState(lvinfo.iItem, LVIS_SELECTED, LVIS_SELECTED);
+	}
+	else
+	{
+		CListCtrl::SetItemState(lvinfo.iItem, 0, LVIS_SELECTED);
 	}
 }

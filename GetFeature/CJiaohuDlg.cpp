@@ -10,6 +10,7 @@
 #include "CTezhengDlg.h"
 #include <iostream>
 #include <fstream>
+#include "CKindDlg.h"
 #pragma comment(lib,"gdiplus.lib")
 
 // CJiaohuDlg 对话框
@@ -38,6 +39,8 @@ void CJiaohuDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PROGRESS, m_progress);
 	DDX_Control(pDX, IDC_COMBOX_FEATURE, m_combox_feature);
 	DDX_Control(pDX, IDC_LIST_FRAMES, m_listbox_frame);
+	DDX_Control(pDX, IDC_JIAORADIAO1, m_jradiao1);
+	DDX_Control(pDX, IDC_JIAOHURADIAO2, m_jradiao2);
 }
 
 
@@ -65,6 +68,7 @@ BEGIN_MESSAGE_MAP(CJiaohuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, &CJiaohuDlg::OnBnClickedButtonSave)
 	
 	ON_BN_CLICKED(IDC_BUTTON_QUICK, &CJiaohuDlg::OnBnClickedButtonQuick)
+	ON_BN_CLICKED(IDC_BUTTON_JIAOCONFIG, &CJiaohuDlg::OnBnClickedButtonJiaoconfig)
 END_MESSAGE_MAP()
 
 
@@ -80,12 +84,9 @@ void log_s(const char* msg, int d = -1123) {
 }
 
 // 全局信号量
-bool isexcut_black = true;
 bool normal_stop = true;//正常播放结束
 bool thread_pause = false;
 bool thread_exit = false;
-CWinThread* play_thread = NULL;
-CWinThread* key_thread = NULL;
 int to_stop = 0;
 int videoIndex = -1;
 int is_playing_fast = 0;
@@ -118,7 +119,7 @@ CWnd* pwnd;
 DWORD result;
 int nFrame = 0;//特征帧数
 
-int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
+int CJiaohuDlg::SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BOOL bAllowNullString)
 {
 	rArrString.RemoveAll();
 	CString szStr = lpszStr;
@@ -160,60 +161,7 @@ int SplitString(LPCTSTR lpszStr, LPCTSTR lpszSplit, CStringArray& rArrString, BO
 	} while (1);
 	return rArrString.GetSize();
 }
-void CJiaohuDlg::SaveBmp(AVCodecContext* CodecContex, AVFrame* Picture, int width, int height, int num)
-{
-	AVPicture pPictureRGB;//RGB图片
 
-	static struct SwsContext* img_convert_ctx;
-	img_convert_ctx = sws_getContext(width, height, CodecContex->pix_fmt, width, height, \
-		AV_PIX_FMT_BGR24, SWS_BICUBIC, NULL, NULL, NULL);
-	// 确认所需缓冲区大小并且分配缓冲区空间
-	avpicture_alloc(&pPictureRGB, AV_PIX_FMT_BGR24, width, height);
-	sws_scale(img_convert_ctx, Picture->data, Picture->linesize, \
-		0, height, pPictureRGB.data, pPictureRGB.linesize);
-
-	int lineBytes = pPictureRGB.linesize[0], i = 0;
-
-	char fileName[1024] = { 0 };
-	CString bmppath = strVideoFolderPath + "//%d.bmp";
-	USES_CONVERSION;
-	char* bmpSavePath = W2A(bmppath);
-	//time_t ltime;
-	//time(<ime);
-	//sprintf(fileName,bmpSavePath , ltime);////////////////////////////////////////////???????????????????????????
-	sprintf(fileName, bmpSavePath, num);
-
-	FILE* pDestFile = fopen(fileName, "wb");
-	BITMAPFILEHEADER btfileHeader;
-	btfileHeader.bfType = MAKEWORD(66, 77);
-	btfileHeader.bfSize = lineBytes * height;
-	btfileHeader.bfReserved1 = 0;
-	btfileHeader.bfReserved2 = 0;
-	btfileHeader.bfOffBits = 54;
-
-	BITMAPINFOHEADER bitmapinfoheader;
-	bitmapinfoheader.biSize = 40;
-	bitmapinfoheader.biWidth = width;
-	bitmapinfoheader.biHeight = height;
-	bitmapinfoheader.biPlanes = 1;
-	bitmapinfoheader.biBitCount = 24;
-	bitmapinfoheader.biCompression = BI_RGB;
-	bitmapinfoheader.biSizeImage = lineBytes * height;
-	bitmapinfoheader.biXPelsPerMeter = 0;
-	bitmapinfoheader.biYPelsPerMeter = 0;
-	bitmapinfoheader.biClrUsed = 0;
-	bitmapinfoheader.biClrImportant = 0;
-
-	fwrite(&btfileHeader, 14, 1, pDestFile);
-	fwrite(&bitmapinfoheader, 40, 1, pDestFile);
-	for (i = height - 1; i >= 0; i--)
-	{
-		fwrite(pPictureRGB.data[0] + i * lineBytes, lineBytes, 1, pDestFile);
-	}
-
-	fclose(pDestFile);
-	avpicture_free(&pPictureRGB);
-}
 int sfp_refresh_thread(void *opaque) {
 	CJiaohuDlg* pDlg = (CJiaohuDlg*)opaque;
 	while (!thread_exit) {
@@ -275,7 +223,7 @@ int CJiaohuDlg::get_allframes() {
 		USES_CONVERSION;
 		char* sourceFile = W2A(VideoFilepath);
 
-	
+		
 		//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 		av_register_all();
 	
@@ -456,7 +404,7 @@ UINT videoplayer(LPVOID lpParam) {
 
 	CString szSplit = _T("\\");
 	CStringArray szList;
-	int Count = SplitString(pDlg->VideoFilepath, szSplit, szList, FALSE);
+	int Count = pDlg->SplitString(pDlg->VideoFilepath, szSplit, szList, FALSE);
 	pDlg->VideoFilename = szList.GetAt(Count - 1);
 
 	if (pDlg->newvideo){
@@ -465,16 +413,19 @@ UINT videoplayer(LPVOID lpParam) {
 
 	CString szSplit2 = _T(".");
 	CStringArray szList2;
-	int Count2 = SplitString(pDlg->VideoFilename, szSplit2, szList2, FALSE);
+	int Count2 = pDlg->SplitString(pDlg->VideoFilename, szSplit2, szList2, FALSE);
 	pDlg->suffix = szList2.GetAt(Count2 - 1);
 	int n = pDlg->VideoFilename.ReverseFind('.');
 	pDlg->VideoFilename_nosuffix = pDlg->VideoFilename.Left(n);
 
-	CString szSplit3 = _T("_");
+	CString szSplit3 = _T("-");
 	CStringArray szList3;
-	int Count3 = SplitString(pDlg->VideoFilename_nosuffix, szSplit3, szList3, FALSE);
+	int Count3 = pDlg->SplitString(pDlg->VideoFilename_nosuffix, szSplit3, szList3, FALSE);
 	CString flag = szList3.GetAt(Count3 - 1);
-	if (flag == _T("x")) {
+	if (flag == _T("FD")) {
+		pDlg->get_allframes();
+	}
+	else if (flag == _T("JC")) {
 		pDlg->get_allframes();
 	}
 
@@ -522,7 +473,7 @@ UINT videoplayer(LPVOID lpParam) {
 	}
 	pDlg->screen_w = pCodecCtx->width;
 	pDlg->screen_h = pCodecCtx->height;
-	isexcut_black = false;
+	pDlg->isexcut_black = false;
 	screen = SDL_CreateWindowFrom(pDlg->GetDlgItem(IDC_PICTURE_PLAY)->GetSafeHwnd());
 
 	if (!screen) {
@@ -622,6 +573,7 @@ UINT videoplayer(LPVOID lpParam) {
 			}
 		}
 		else if (event.type == SFM_SHOWPICTURE_EVENT) {
+			
 			pFrame = pDlg->frames[keyframe_index];
 			if (sws_scale(pSwsCtx, (const uint8_t * const*)pFrame->data, pFrame->linesize, 0, pCodecCtx->height,
 				pFrameYUV->data, pFrameYUV->linesize) == 0) {
@@ -644,17 +596,14 @@ UINT videoplayer(LPVOID lpParam) {
 			is_playing_fast = 0;
 			is_playing_slowly = 0;
 			is_playing_frame = 0;
-			play_thread = NULL;
-			isexcut_black = true;
+			pDlg->play_thread = NULL;
+			pDlg->isexcut_black = true;
 			pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
 			pDlg->GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("停止"));
 			pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
 			pDlg->GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
 			pDlg->GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 			pDlg->GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
-			//SDL_Quit();
-			//pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
-			//AfxMessageBox(_T("播放结束"));
 			break;
 		}
 	}
@@ -698,7 +647,11 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		if (fea_is_vid) {
 			m_feature_folder_path.SetWindowText(strVideoFolderPath);
 		}
-		
+		CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
+		if (pWnd->m_piliangDlg.piplay_thread) {
+			pWnd->m_piliangDlg.pithread_stop();
+			MsgWaitForMultipleObjects(1, (HANDLE*)pWnd->m_piliangDlg.piplay_thread, FALSE, INFINITE, QS_ALLINPUT);
+		}
 		newvideo = true;
 		if (play_thread) {
 			thread_stop();	
@@ -707,6 +660,7 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 		
 	
 			Sleep(100);
+			frames.swap(vector<AVFrame*>());
 			timeclips.clear();
 			m_slider_seek.timepos.clear();
 			thread_pause = false;
@@ -720,12 +674,15 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 			m_listbox_frame.ResetContent();
 			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText((CString)"停止");
 			GetDlgItem(IDC_BUTTON_GETTIME)->SetWindowText(_T("开始位置"));
+			GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(1);
 
 			m_describe.SetWindowText(_T("播放视频"));
 			GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
 			GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
 			GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 			GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+			GetDlgItem(IDC_BUTTON_QUICK)->EnableWindow(1);
+			GetDlgItem(IDC_BUTTON_JIAOCONFIG)->EnableWindow(1);
 		
 		
 	}
@@ -877,6 +834,7 @@ void CJiaohuDlg::OnLbnSelchangeListFrames()
 void CJiaohuDlg::OnBnClickedButtonDeleframe()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	jiaoneedsave = true;
 	frames.erase(frames.begin()+keyframe_index);
 	m_listbox_frame.DeleteString(keyframe_index);
 	nFrame--;
@@ -894,9 +852,16 @@ BOOL CJiaohuDlg::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
 	GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
 	GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
 	GetDlgItem(IDC_PROGRESS)->ShowWindow(0);
 	m_progress.SetRange(0, 100);
 	m_combox_feature.SetCurSel(0);
+	font.CreatePointFont(120, _T("新宋体"));
+	m_listbox_videoclip.SetFont(&font);
+	m_listbox_frame.SetFont(&font);
+	m_timelength.SetFont(&font);
+	m_describe.SetFont(&font);
+	m_jradiao1.SetCheck(true);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -948,6 +913,7 @@ void CJiaohuDlg::OnLbnDblclkListVideoclip()
 				result = MsgWaitForMultipleObjects(1, (HANDLE*)play_thread, FALSE, INFINITE, QS_ALLINPUT);
 			}
 			Sleep(100);
+			frames.swap(vector<AVFrame*>());
 			timeclips.clear();
 			m_slider_seek.timepos.clear();
 			thread_pause = false;
@@ -1409,19 +1375,41 @@ static void close_stream(AVFormatContext* oc, OutputStream* ost) {
 	//swr_free(&ost->swr_ctx); 
 }
 
-UINT feature_extract(LPVOID lpParam) {
-	CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
+	//CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
+	CString ckind1;
+	CString ckind2;
+	if (kind1 == 1) {
+		ckind1 = "-X5";
+		m_describe.SetWindowText(_T("正在提取X5特效..."));
+		CRect rect;
+		m_describe.GetClientRect(&rect);
+		InvalidateRect(rect);
+		UpdateWindow();
+	}
+	if (kind1 == 2) {
+		ckind1 = "-YT";
+		m_describe.SetWindowText(_T("正在提取YT特效..."));
+		CRect rect;
+		m_describe.GetClientRect(&rect);
+		InvalidateRect(rect);
+		UpdateWindow();
+	}
+	if (kind2 == 1) {
+		ckind2 = "-FD";
+	}
+	if (kind2 == 2) {
+		ckind2 = "-JC";
+	}
 	int ret;
-	//int key_width;
-	//int key_height;
 	AVFormatContext* fepFmtCtx = NULL;
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
 	USES_CONVERSION;
-	char* sourceFile = W2A(pDlg->VideoFilepath);
+	char* sourceFile = W2A(VideoFilepath);
 
 	// 将提取特征按钮disable
-	pDlg->GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
+	GetDlgItem(IDC_BUTTON_FEATUREEXTRACT)->EnableWindow(0);
 
 	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 	av_register_all();
@@ -1453,8 +1441,6 @@ UINT feature_extract(LPVOID lpParam) {
 	}
 	// 得到视频流编码上下文的指针
 	fepCodecCtx = fepFmtCtx->streams[videoIndex]->codec;
-	//key_width = fepCodecCtx->width;
-	//key_height = fepCodecCtx->height;
 
 	//  寻找视频流的解码器
 	fepCodec = avcodec_find_decoder(fepCodecCtx->codec_id);
@@ -1519,7 +1505,7 @@ UINT feature_extract(LPVOID lpParam) {
 	 * and initialize the codecs. */
 	if (fmt->video_codec != AV_CODEC_ID_NONE) {
 		//add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
-		add_stream(&video_st, oc, &video_codec, fmt->video_codec, pDlg->screen_w, pDlg->screen_h);
+		add_stream(&video_st, oc, &video_codec, fmt->video_codec, screen_w, screen_h);
 		have_video = 1;
 		encode_video = 1;
 	}
@@ -1542,6 +1528,7 @@ UINT feature_extract(LPVOID lpParam) {
 		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
 		return 1;
 	}
+	int k = 0;
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
 
@@ -1549,8 +1536,18 @@ UINT feature_extract(LPVOID lpParam) {
 		if (nComplete > 0 && OutFrame->key_frame) {
 			//解码一帧成功
 			write_video_frame(oc, &video_st, OutFrame);
+			list_item.kind = k;
+			list_item.score = 90;
+			frame_items.push_back(list_item);
+			k++;
 		}
 	}
+	//smpname = outfile + _T(".smp");
+	//ofstream os(smpname, ios::binary);
+	//int size1 = frame_items.size();
+	//os.write((const char*)& size1, 4);
+	//os.write((const char*)& frame_items[0], size1 * sizeof(list_item));
+	//os.close();
 
 	//将smp写入文件
 	ofstream ofile(smpfilename);
@@ -1566,16 +1563,16 @@ UINT feature_extract(LPVOID lpParam) {
 		avio_closep(&oc->pb); 
 	/* free the stream */   
 	avformat_free_context(oc); 
-	pDlg->m_listbox_videoclip.AddString(newclipname);
-	pDlg->KillTimer(1);
-	pDlg->GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
-	pDlg->GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(1);
-	pDlg->GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(1);
-	pDlg->GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(1);
-	pDlg->GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(1);
-	pDlg->GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(1);
-	pDlg->m_describe.SetWindowText(_T("提取成功"));
-	pDlg->m_progress.ShowWindow(SW_HIDE);
+	m_listbox_videoclip.AddString(newclipname);
+	KillTimer(1);
+	GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(1);
+	GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(1);
+	m_describe.SetWindowText(_T("提取成功"));
+	m_progress.ShowWindow(SW_HIDE);
 	return 0;
 }
 
@@ -1583,30 +1580,40 @@ UINT feature_extract(LPVOID lpParam) {
 void CJiaohuDlg::OnBnClickedButtonFeatureextract()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	if (!thread_pause) {
-		thread_pause = !thread_pause;
-		GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
-	}
-	GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(0);
-	GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(0);
-	m_progress.ShowWindow(SW_SHOW);
-	m_progress.SetPos(0);
-	SetTimer(1, 20, nullptr);
-	key_thread = AfxBeginThread(feature_extract, this);
-	result = MsgWaitForMultipleObjects(1, (HANDLE*)key_thread, FALSE, INFINITE, QS_ALLINPUT);
-	if (result == WAIT_OBJECT_0)
-	{
-	m_describe.SetWindowText(_T("提取成功"));
-	}
-	
 
+	CKindDlg kk;
+	int kind2;
+	if (kk.DoModal() == IDOK) {
+		if (!thread_pause) {
+			thread_pause = !thread_pause;
+			GetDlgItem(IDC_BUTTON_PLAY)->SetWindowText(_T("播放"));
+		}
+		GetDlgItem(IDC_BUTTON_GETTIME)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_DELCLIP)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CUTVIDEO)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_CLIPEXT)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_OPEN)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_PLAY)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_PLAY_SLOWLY)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_PLAY_FAST)->EnableWindow(0);
+		GetDlgItem(IDC_BUTTON_PLAY_FRAME)->EnableWindow(0);
+		m_progress.ShowWindow(SW_SHOW);
+		m_progress.SetPos(0);
+		SetTimer(1, 20, nullptr);
+		if (m_jradiao1.GetCheck()) {
+			kind2 = 1;
+		}
+		if (m_jradiao2.GetCheck()) {
+			kind2 = 2;
+		}
+		if (kk.check1) {
+			JEeature_Extract(1,kind2);
+		}
+		if (kk.check2) {
+			JEeature_Extract(2,kind2);
+		}
+		
+	}
 }
 
 
@@ -1638,9 +1645,6 @@ int CJiaohuDlg::save_newvideo() {
 	int have_video = 0;
 	int encode_video = 0;
 	AVDictionary* opt = NULL;
-	/* Initialize libavcodec, and register all codecs and formats. */
-	//CString newclipname = VideoFilename_nosuffix + "-FD" + ".flv";
-	//CString outfile = strVideoFolderPath + "//" + newclipname;
 	CString outfile = VideoFilepath;
 	USES_CONVERSION;
 	filename = W2A(outfile);
@@ -1711,7 +1715,11 @@ int CJiaohuDlg::save_newvideo() {
 void CJiaohuDlg::OnBnClickedButtonSave()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	save_newvideo();
+	if (jiaoneedsave) {
+		save_newvideo();
+	
+	}
+	
 }
 
 void CJiaohuDlg::OnBnClickedButtonQuick()
@@ -1719,6 +1727,31 @@ void CJiaohuDlg::OnBnClickedButtonQuick()
 	// TODO: 在此添加控件通知处理程序代码
 	CGetFeatureDlg* pWnd = (CGetFeatureDlg*)AfxGetMainWnd();
 	pWnd->change();
+	pWnd->m_tezhengDlg.videoind = videoIndex;
+	pWnd->m_tezhengDlg.screen_h = screen_h;
+	pWnd->m_tezhengDlg.screen_w = screen_w;
+	pWnd->m_tezhengDlg.tepixfmt = pixfmt;
+	pWnd->m_tezhengDlg.VideoFilepath = VideoFilepath;
+	pWnd->m_tezhengDlg.listbox_filepath.ResetContent();
+	pWnd->m_tezhengDlg.tezhengframes.swap(vector<AVFrame*>());
+	pWnd->m_tezhengDlg.tezhengframes.assign(frames.begin(), frames.end());
 	pWnd->m_tezhengDlg.DrawThumbnails();
+	pWnd->m_tezhengDlg.listbox_filepath.AddString(VideoFilepath);
+	pWnd->m_tezhengDlg.SetHScroll();
+	
+}
 
+
+void CJiaohuDlg::OnBnClickedButtonJiaoconfig()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	vector<frame_item> lists;
+	// 读取 
+	ifstream is(smpname, ios::binary);
+	int size1;
+	is.read((char*)& size1, 4);
+	lists.resize(size1);
+	is.read((char*)& lists[0], size1 * sizeof(list_item));
+	//AfxMessageBox(lists[1].score);
 }

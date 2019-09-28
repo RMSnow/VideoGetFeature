@@ -2,6 +2,7 @@
 #include <list>
 #include<Gdiplus.h>
 #include "MyList.h"
+
 using namespace Gdiplus;
 
 // CTezhengDlg 对话框
@@ -31,9 +32,7 @@ protected:
 
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnSize(UINT nType, int cx, int cy);
-	void get_control_original_proportion();
-	void  DrawThumbnails();
+
 	CRect m_rect;
 	typedef struct Rect {
 	public:
@@ -53,18 +52,40 @@ public:
 		}
 	}control;
 	std::list<control*> m_con_list;
-	virtual BOOL OnInitDialog();
+	
 	CImageList* m_imgList = NULL;
-	//CListCtrl m_listCtl;
 	ULONG_PTR m_gdiplusToken;
-	afx_msg void OnBnClickedButtonSelectall();
-	afx_msg void OnDestroy();
-	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt,int width, int height, int bpp);
-	afx_msg void OnCbnSelchangeComboDense();
 	CComboBox m_Combobox;
 	int display_size;
 	MyList m_listCtl;
+	CListBox listbox_filepath;
+	CListBox m_listinfo;
+	bool needsave = false;
+	CString VideoFilepath;//视频文件的路径
+	int screen_w, screen_h;
+	AVPixelFormat tepixfmt;
+	int videoind = -1;
+	vector<AVFrame*> tezhengframes;
+	CFont font;
+
+
+	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedButtonInvert();
-	afx_msg void OnItemchangedList(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBnClickedButtonDel();
+	afx_msg void OnBnClickedButtonSave2();
+	afx_msg void OnBnClickedButtonTeopen();
+	afx_msg void OnLbnSelchangeListboxFilepath();
+	afx_msg void OnBnClickedButtonSelectall();
+	afx_msg void OnDestroy();
+	afx_msg void OnCbnSelchangeComboDense();
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+
+	void get_control_original_proportion();
+	void  DrawThumbnails();
+	void SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, int width, int height, int bpp);
+	int get_allteframes();
+	int tesave_newvideo();
+	void SetHScroll();
+	void SetHScroll2();
+	afx_msg void OnBnClickedButtonDelfile();
 };

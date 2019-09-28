@@ -12,5 +12,6 @@ public:
 	virtual ~MyList();
 	afx_msg void OnNMCustomdraw(NMHDR* pNMHDR, LRESULT* pResult);
 	int display_size;
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };
 
