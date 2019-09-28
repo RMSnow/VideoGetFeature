@@ -92,7 +92,6 @@ public:
 	int videoIndex = -1;
 	AVPixelFormat pipixfmt;
 	vector<AVFrame*> piframes;
-	
 	vector<smp> pismp;
 	int pikeyframe_index = 0;
 	CWinThread* piplay_thread = NULL;
