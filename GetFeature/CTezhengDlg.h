@@ -2,6 +2,7 @@
 #include <list>
 #include<Gdiplus.h>
 #include "MyList.h"
+#include "smpfile.h"
 
 using namespace Gdiplus;
 
@@ -62,10 +63,14 @@ public:
 	CListBox m_listinfo;
 	bool needsave = false;
 	CString VideoFilepath;//视频文件的路径
+	CString SmpFilepath;//视频文件的路径
+	CString FolderPath;
+
 	int screen_w, screen_h;
 	AVPixelFormat tepixfmt;
 	int videoind = -1;
 	vector<AVFrame*> tezhengframes;
+	vector<smp> smp_read_data;
 	CFont font;
 
 
@@ -87,5 +92,6 @@ public:
 	int tesave_newvideo();
 	void SetHScroll();
 	void SetHScroll2();
+	void GetSMPFile();
 	afx_msg void OnBnClickedButtonDelfile();
 };
