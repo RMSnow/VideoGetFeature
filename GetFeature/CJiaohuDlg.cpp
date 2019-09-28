@@ -8,6 +8,8 @@
 #include "SaveBmp.h"
 #include "GetFeatureDlg.h"
 #include "CTezhengDlg.h"
+#include <iostream>
+#include <fstream>
 #pragma comment(lib,"gdiplus.lib")
 
 // CJiaohuDlg 对话框
@@ -347,6 +349,15 @@ int CJiaohuDlg::get_allframes() {
 					frames.push_back(OutFrame);
 					frame_num.Format(_T("frame%d"), nFrame);
 					m_listbox_frame.AddString(frame_num);
+					
+					
+					//把数据写到smp文件中去
+					smp ismp;
+					ismp.setIndex(nFrame);
+					ismp.setGrade(100 - nFrame); // just for test
+					ismp.setCluster(nFrame % 4);
+					smp_data.push_back(ismp);
+
 					nFrame++;
 				}
 			}
@@ -1475,6 +1486,7 @@ UINT feature_extract(LPVOID lpParam) {
 
 	OutputStream video_st = { 0 };
 	const char* filename;
+	const char* smpfilename;
 	AVOutputFormat* fmt;
 	AVFormatContext* oc;
 	AVCodec* video_codec;
@@ -1483,9 +1495,13 @@ UINT feature_extract(LPVOID lpParam) {
 	AVDictionary* opt = NULL;
 	/* Initialize libavcodec, and register all codecs and formats. */
 	CString newclipname = pDlg->VideoFilename_nosuffix + "_x" + ".flv";
+	CString	smpname = pDlg->VideoFilename_nosuffix + "_x" + ".smp";
 	CString outfile = pDlg->strVideoFolderPath + "//" + newclipname;
+	CString smpoutfile = pDlg->strVideoFolderPath + "//" + smpname;
 	
 	filename = W2A(outfile);
+	smpfilename = W2A(smpoutfile);
+
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
 	if (!oc) {
@@ -1535,6 +1551,11 @@ UINT feature_extract(LPVOID lpParam) {
 			write_video_frame(oc, &video_st, OutFrame);
 		}
 	}
+
+	//将smp写入文件
+	ofstream ofile(smpfilename);
+	ofile.write((char*)&pDlg->smp_data, sizeof(pDlg->smp_data));
+	ofile.close();
 
 	av_write_trailer(oc);
 	/* Close each codec. */  

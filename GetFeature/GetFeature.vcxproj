@@ -204,6 +204,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SaveBmp.h" />
+    <ClInclude Include="smpfile.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>

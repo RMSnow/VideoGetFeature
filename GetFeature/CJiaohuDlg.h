@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "MySlider.h"
+#include "smpfile.h"
 #include <stdlib.h>
 #include <list>
 #include <vector>
@@ -57,6 +58,8 @@ public:
 	MySlider m_slider_seek;
 	CProgressCtrl m_progress;
 	vector<AVFrame*> frames;
+	vector<smp> smp_data;
+
 	GdiplusStartupInput m_pGdiplusStartupInput;
 	ULONG_PTR m_pGdiToken;
 
