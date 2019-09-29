@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <list>
 #include "CJiaohuDlg.h"
+#include "smpfile.h"
 // CPiliangDlg 对话框
 #define SFM_SHOWPICTURE_EVENTPI       (SDL_USEREVENT + 4)
 extern "C" {
@@ -72,7 +73,9 @@ public:
 	int pisave_newvideo();
 
 	bool isexcut_black = true;
+	CString FolderPath;//文件路径
 	CString VideoFilepath;//视频文件的路径
+	CString SmpFilepath; //smp 文件路径
 	CString VideoFilename;
 	CString VideoFilename_nosuffix;
 	CString strVideoFolderPath;
@@ -89,7 +92,7 @@ public:
 	int videoIndex = -1;
 	AVPixelFormat pipixfmt;
 	vector<AVFrame*> piframes;
-	
+	vector<smp> pismp;
 	int pikeyframe_index = 0;
 	CWinThread* piplay_thread = NULL;
 	CButton m_pradio1;

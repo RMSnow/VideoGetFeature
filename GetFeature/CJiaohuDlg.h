@@ -129,7 +129,5 @@ public:
 	std::list<control*> m_con_list;
 
 	void  JiaoGetSMPFile();
-
-	
 };
 int sfp_refresh_thread(void* opaque);

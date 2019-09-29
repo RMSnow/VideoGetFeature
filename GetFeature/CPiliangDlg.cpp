@@ -200,12 +200,11 @@ void CPiliangDlg::OnBnClickedButtonPiopenfolder()
 		POSITION posStart = fileDlg.GetStartPosition();
 		while (posStart)
 		{
-			
+
 			CString fileName = fileDlg.GetNextPathName(posStart);
 			m_listpath.AddString(fileName);
 		}
 		SetHScroll();
-
 	}
 }
 
@@ -489,8 +488,9 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	AVCodecContext* fepCodecCtx = NULL;
 	AVCodec* fepCodec = NULL;
 	USES_CONVERSION;
+
+	// 明天优化这段代码
 	char* sourceFile = W2A(VideoFilepath);
-	
 	CString szSplit = _T("\\");
 	CStringArray szList;
 	int Count = CJiaohuDlg::SplitString(VideoFilepath, szSplit, szList, FALSE);
@@ -620,6 +620,9 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
 		return -1;
 	}
+
+	int k = 0;
+	smp ismp;
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
 
@@ -627,6 +630,14 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 		if (nComplete > 0 && OutFrame->key_frame) {
 			//解码一帧成功
 			write_video_frame(oc, &video_st, OutFrame);
+
+			//把数据写到smp文件中去
+			ismp.setIndex(k);
+			ismp.setGrade(100 - k); // just for test
+			ismp.setCluster(k / 4);
+			pismp.push_back(ismp);
+
+			k++;
 		}
 	}
 
@@ -643,8 +654,23 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	av_frame_free(&OutFrame);
 	avcodec_close(fepCodecCtx);
 	avformat_close_input(&fepFmtCtx);
-	return 0;
 
+	//将smp写入文件
+	int size = pismp.size();
+	int checkCode = 20190929;
+	vector<smp>::iterator it;
+	ofstream ofile(smp_path, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
+	ofile.write((const char*)&size, 4);
+	for (it = pismp.begin(); it != pismp.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	pismp.clear(); // 清空smp_data vector
+	ofile.close();
+
+	return 0;
 }
 
 void CPiliangDlg::OnBnClickedButtonPiextract()
@@ -693,12 +719,7 @@ void CPiliangDlg::OnBnClickedButtonPiextract()
 				}
 			}
 		}
-
-
-	
 	}
-
-
 }
 
 
@@ -724,7 +745,6 @@ int CPiliangDlg::get_allpiframes() {
 
 	USES_CONVERSION;
 	char* sourceFile = W2A(VideoFilepath);
-
 
 	//注册库中含有的所有可用的文件格式和编码器，这样当打开一个文件时，它们才能够自动选择相应的文件格式和编码器。
 	av_register_all();
@@ -803,12 +823,24 @@ int CPiliangDlg::get_allpiframes() {
 				nFrame++;
 			}
 		}
-
 	}
-
 	avcodec_close(fepCodecCtx);
 	av_free(fepFmtCtx);
 
+	//从文件加载smp信息
+	smp ismp;
+	int size,checkCode;
+	SmpFilepath = ""; pismp.clear(); //清空变量信息
+	SmpFilepath = VideoFilepath + _T(".smp");
+
+	ifstream ifile(SmpFilepath, ios::binary);
+	ifile.read((char*)&checkCode, 4); //读取校验码
+	ifile.read((char*)&size, 4); //读取关键帧数量
+	for (int i = 0; i < size; i++)
+	{
+		ifile.read((char*)&ismp, sizeof(smp));
+		pismp.push_back(ismp);
+	}
 }
 
 
@@ -1024,8 +1056,15 @@ void CPiliangDlg::OnLbnSelchangeListboxPiframes()
 void CPiliangDlg::OnBnClickedButtonPidelframe()
 {
 	// TODO: 在此添加控件通知处理程序代码
+
 	CString framename;
 	piframes.erase(piframes.begin() + pikeyframe_index);
+	pismp.erase(pismp.begin() + pikeyframe_index);
+
+	CString	show;
+	show.Format(_T("%d"), pikeyframe_index);
+	AfxMessageBox(show);
+
 	pineedsave = true;
 	m_listframes.GetText(pikeyframe_index, framename);
 	m_listframes.DeleteString(pikeyframe_index);
@@ -1113,7 +1152,22 @@ int CPiliangDlg::pisave_newvideo() {
 	/* free the stream */
 	avformat_free_context(oc);
 
-
+	//将smp写入文件
+	smp ismp;
+	int size = pismp.size();
+	int checkCode = 20190929; //smp文件校验码
+	const char* smpfilename = W2A(VideoFilename + _T(".smp"));
+	vector<smp>::iterator it;
+	ofstream ofile(smpfilename, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
+	ofile.write((const char*)&size, 4);
+	for (it = pismp.begin(); it != pismp.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	pismp.clear(); // 清空smp_data vector
+	ofile.close();
 }
 
 void CPiliangDlg::OnBnClickedButtonPisave()
