@@ -1414,7 +1414,9 @@
 #define IDC_BUTTON_INVERT               1112
 #define stc26                           0x0459
 #define stc27                           0x045a
+#define IDC_RADIO_BUTTONCLUSTER         1114
 #define stc28                           0x045b
+#define IDC_RADIO_BUTTONFRADE           1115
 #define stc29                           0x045c
 #define IDC_RADIO_BUTTONMO              1116
 #define stc30                           0x045d

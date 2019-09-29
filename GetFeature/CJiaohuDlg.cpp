@@ -284,6 +284,7 @@ int CJiaohuDlg::get_allframes() {
 		int len = 0;
 		int nComplete = 0;	
 		CString frame_num;
+
 		while ((av_read_frame(fepFmtCtx, InPack) >= 0)) {
 			
 			if (InPack->stream_index == videoIndex) {
@@ -313,7 +314,6 @@ UINT videoplayer(LPVOID lpParam) {
 	last_sec = -1;
 	thread_exit = false;
 	sec = 0;
-	
 	thread_pause = false;
 	AVFormatContext* pFmtCtx = NULL;
 	AVCodecContext* pCodecCtx = NULL;
@@ -346,7 +346,9 @@ UINT videoplayer(LPVOID lpParam) {
 	pFmtCtx = avformat_alloc_context();
 	//3. 打开文件
 	if (avformat_open_input(&(pFmtCtx), filepath, NULL, NULL) != 0) {
-		log_s("Couldn't open input stream.\n");
+		pDlg->m_describe.SetWindowText(_T("视频文件打开失败"));
+		AfxMessageBox(_T("文件损坏，不能播放"));
+		pDlg->play_thread = NULL;
 		return -1;
 	}
 	//4. 获取文件信息
@@ -458,6 +460,7 @@ UINT videoplayer(LPVOID lpParam) {
 	log_s("--------------- File Information ----------------");
 	av_dump_format(pFmtCtx, 0, filepath, 0);
 	log_s("-------------------------------------------------");
+	
 	//获取SwsContext
 	pSwsCtx = sws_getContext(pCodecCtx->width,pCodecCtx->height, pCodecCtx->pix_fmt,
 		pCodecCtx->width,pCodecCtx->height, AV_PIX_FMT_YUV420P, NULL, NULL, NULL, NULL);
@@ -490,8 +493,6 @@ UINT videoplayer(LPVOID lpParam) {
 		if (to_stop) {
 			to_stop = 0;
 			pDlg->m_slider_seek.SetPos(0);
-			//SDL_Quit();
-			//pDlg->GetDlgItem(IDC_PICTURE_PLAY)->ShowWindow(SW_SHOWNORMAL);
 			thread_exit = true;
 			Sleep(100);
 			break;
@@ -576,7 +577,6 @@ UINT videoplayer(LPVOID lpParam) {
 				pFrameYUV->data, pFrameYUV->linesize) == 0) {
 				continue;
 			}
-
 			SDL_UpdateTexture(sdlTexture, NULL, pFrameYUV->data[0], pFrameYUV->linesize[0]);
 			SDL_RenderClear(sdlRenderer);
 			//SDL_RenderCopy( sdlRenderer, sdlTexture, &sdlRect, &sdlRect);  
@@ -654,8 +654,6 @@ void CJiaohuDlg::OnBnClickedButtonOpen()
 			thread_stop();	
 			result = MsgWaitForMultipleObjects(1, (HANDLE*)play_thread, FALSE, INFINITE, QS_ALLINPUT);
 		}
-		
-	
 			Sleep(100);
 			frames.swap(vector<AVFrame*>());
 			timeclips.clear();
@@ -834,8 +832,10 @@ void CJiaohuDlg::OnBnClickedButtonDeleframe()
 	jiaoneedsave = true;
 	frames.erase(frames.begin()+keyframe_index);
 	m_listbox_frame.DeleteString(keyframe_index);
-	keyframe_index--;
-	//nFrame--;
+	if (keyframe_index != 0) {
+	    keyframe_index--;
+	}
+
 	thread_pause = true;
 	is_showpicture = 1;
 }
@@ -1334,7 +1334,6 @@ static int write_video_frame(AVFormatContext* oc, OutputStream* ost, AVFrame* ke
 	frame = get_video_frame(ost,keyframe);  
 
 	if (oc->oformat->flags & AVFMT_RAWPICTURE) {   
-		AfxMessageBox(_T("12"));
 		/* a hack to avoid data copy with some raw video muxers */  
 		AVPacket pkt;   
 		av_init_packet(&pkt);   
@@ -1349,8 +1348,7 @@ static int write_video_frame(AVFormatContext* oc, OutputStream* ost, AVFrame* ke
 		ret = av_interleaved_write_frame(oc, &pkt); 
 	} else {
 		
-		/*AVPacket *pPacket;
-		pPacket = av_packet_alloc();*/
+
 		AVPacket pkt = { 0 };     
 		av_init_packet(&pkt);   
 		/* encode the image */   
@@ -1380,7 +1378,6 @@ static void close_stream(AVFormatContext* oc, OutputStream* ost) {
 }
 
 int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
-	//CJiaohuDlg* pDlg = (CJiaohuDlg*)lpParam;
 	CString ckind1;
 	CString ckind2;
 	CString suffix;
@@ -1501,13 +1498,13 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
 	}
 	if (!oc) {
-		
 		return 1;
 	}
 	fmt = oc->oformat;
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
 	if (fmt->video_codec != AV_CODEC_ID_NONE) {
+		//fmt->video_codec = AV_CODEC_ID_MPEG4;
 		//add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
 		add_stream(&video_st, oc, &video_codec, fmt->video_codec, screen_w, screen_h);
 		have_video = 1;
@@ -1535,6 +1532,7 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 	int k = 0;
 	smp ismp;
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
+		
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
 
 		//判断是否是关键帧
@@ -1668,7 +1666,7 @@ int CJiaohuDlg::save_newvideo() {
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
 	if (!oc) {
-		AfxMessageBox(_T("123"));
+		
 		printf("Could not deduce output format from file extension: using MPEG.\n");
 		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
 	}
@@ -1710,8 +1708,6 @@ int CJiaohuDlg::save_newvideo() {
 		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
 		return 1;
 	}
-	
-		
 	for (int i = 0; i<frames.size(); i++)
 	{
 		temp_frame = frames[i];

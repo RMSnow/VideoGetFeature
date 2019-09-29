@@ -185,7 +185,6 @@ void CTezhengDlg::SaveAsBMP(AVFrame* pFrameRGB, AVPixelFormat pixfmt, smp smp_it
 		CString cluster_id;
 		cluster_id.Format(_T("%d"), smp_item.cluster_id);
 		m_listCtl.InsertItem(a, cluster_id, a);
-		m_listCtl.InsertItem(a, _T("12"), a);
 	}
 	
 	avpicture_free(&pPictureRGB);
@@ -772,7 +771,6 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 		CString fn = fileDlg.GetFileTitle();
 		SmpFilepath = fileDlg.GetPathName();
 		VideoFilepath = FolderPath + _T("\\") + fn;
-		smp_read_data.swap(vector<smp>());
 		GetSMPFile(); //打开smp文件
 		listbox_filepath.AddString(SmpFilepath);
 		SetHScroll();
@@ -784,6 +782,7 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 
 void  CTezhengDlg::GetSMPFile()
 {
+	smp_read_data.swap(vector<smp>());
 	smp ismp;
 	int size;
 
@@ -805,8 +804,10 @@ void CTezhengDlg::OnLbnSelchangeListboxFilepath()
 	if (num != 0) {
 		int nSel = listbox_filepath.GetCurSel();
 		if (nSel != CB_ERR) {
-			listbox_filepath.GetText(nSel,VideoFilepath);
-			tezhengframes.swap(vector<AVFrame*>());
+			listbox_filepath.GetText(nSel, SmpFilepath);
+			GetSMPFile(); //打开smp文件
+			int n = SmpFilepath.ReverseFind('.');
+			VideoFilepath = SmpFilepath.Left(n);
 			get_allteframes();
 			DrawThumbnails(display_kind);
 		}
@@ -825,6 +826,21 @@ void CTezhengDlg::OnBnClickedButtonDelfile()
 		}
 	}
 }
+int CALLBACK CompareByNum(LPARAM lP1, LPARAM lP2, LPARAM lP)
+{
+	CTezhengDlg* pThis = (CTezhengDlg*)lP;
+
+	//分别获取参与排序的两个行的编号
+	CString num1 = pThis->m_listCtl.GetItemText(lP1, 0);
+	USES_CONVERSION;
+	int nNum1 = atoi(W2A(num1));
+	CString num2 = pThis->m_listCtl.GetItemText(lP2, 0);
+	int nNum2 = atoi(W2A(num2));
+	
+	return nNum1 > nNum2;
+
+}
+
 
 
 void CTezhengDlg::OnBnClickedRadioButtonmo()
@@ -840,6 +856,13 @@ void CTezhengDlg::OnBnClickedRadioButtonfrade()
 	// TODO: 在此添加控件通知处理程序代码
 	display_kind = 2;
 	DrawThumbnails(display_kind);
+	int nCount = m_listCtl.GetItemCount() - 1;
+	while (nCount > -1) {
+		m_listCtl.SetItemData(nCount, nCount);
+		nCount--;
+
+	}
+	m_listCtl.SortItems(CompareByNum, (DWORD_PTR)this);
 }
 
 
@@ -848,4 +871,11 @@ void CTezhengDlg::OnBnClickedRadioButtoncluster()
 	// TODO: 在此添加控件通知处理程序代码
 	display_kind = 3;
 	DrawThumbnails(display_kind);
+	int nCount = m_listCtl.GetItemCount() - 1;
+	while (nCount > -1) {
+		m_listCtl.SetItemData(nCount,nCount);
+		nCount--;
+	
+	}
+	m_listCtl.SortItems(CompareByNum, (DWORD_PTR)this);
 }

@@ -61,7 +61,7 @@ BOOL CPiliangDlg::OnInitDialog()
 	// TODO:  在此添加额外的初始化
 	get_control_original_proportion();
 	font.CreatePointFont(120, _T("新宋体"));
-	m_listpath.SetFont(&font);
+	//m_listpath.SetFont(&font);
 	m_pradio1.SetCheck(true);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
@@ -192,13 +192,18 @@ void CPiliangDlg::OnBnClickedButtonPiopenfolder()
 	// TODO: 在此添加控件通知处理程序代码
 	TCHAR szFilter[] = _T("All files(*.*)|*.*|AVI file(*.avi)|*.avi|wmv file(*.wmv)|*.wmv|asf file(*.asf)|*.asf|mpg file(*.mpg)|*.mpg||");
 	// 构造打开文件对话框   
-	CFileDialog fileDlg(TRUE, NULL, NULL, 0, szFilter, this);
+	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, szFilter, this);
 
 	// 显示打开文件对话框   
 	if (IDOK == fileDlg.DoModal())
 	{
-		VideoFilepath = fileDlg.GetPathName();
-		m_listpath.AddString(VideoFilepath);
+		POSITION posStart = fileDlg.GetStartPosition();
+		while (posStart)
+		{
+			
+			CString fileName = fileDlg.GetNextPathName(posStart);
+			m_listpath.AddString(fileName);
+		}
 		SetHScroll();
 
 	}
@@ -492,13 +497,7 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	VideoFilename = szList.GetAt(Count - 1);
 	int tet = VideoFilepath.Find(VideoFilename);
 	strVideoFolderPath = VideoFilepath.Left(tet) ;
-	CString info=_T("开始处理：")+ VideoFilename;
-	info.Format(info);
-	m_listinfo.AddString(info);
-	CRect rect;
-	m_listinfo.GetClientRect(&rect);
-	InvalidateRect(rect);
-	UpdateWindow();
+
 	CString szSplit2 = _T(".");
 	CStringArray szList2;
 	int Count2 = CJiaohuDlg::SplitString(VideoFilename, szSplit2, szList2, FALSE);
@@ -511,9 +510,15 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 
 	// 打开视频文件
 	if ((ret = avformat_open_input(&fepFmtCtx, sourceFile, NULL, NULL)) != 0) {
-	
+		m_listinfo.AddString(VideoFilename+_T(" 视频文件打开失败"));
 		return -1;
 	}
+	CString info = _T("开始处理：") + VideoFilename;
+	m_listinfo.AddString(info);
+	CRect rect;
+	m_listinfo.GetClientRect(&rect);
+	InvalidateRect(rect);
+	UpdateWindow();
 	// 取出文件流信息
 	if (avformat_find_stream_info(fepFmtCtx, NULL) < 0) {
 
@@ -582,7 +587,7 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	}
 	if (!oc) {
 
-		return 1;
+		return -1;
 	}
      
 
@@ -590,6 +595,7 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
 	if (fmt->video_codec != AV_CODEC_ID_NONE) {
+		
 		//add_stream(&video_st, oc, &video_codec, fmt->video_codec, key_width, key_height);
 		add_stream(&video_st, oc, &video_codec, fmt->video_codec, screen_w, screen_h, videoIndex);
 		have_video = 1;
@@ -605,14 +611,14 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 		ret = avio_open(&oc->pb, filename, AVIO_FLAG_WRITE);
 		if (ret < 0) {
 			//fprintf(stderr, "Could not open '%s': %s\n", filename, av_err2str(ret));     
-			return 1;
+			return -1;
 		}
 	}
 	/* Write the stream header, if any. */
 	ret = avformat_write_header(oc, &opt);
 	if (ret < 0) {
 		//fprintf(stderr, "Error occurred when opening output file: %s\n", av_err2str(ret));    
-		return 1;
+		return -1;
 	}
 	while ((av_read_frame(fepFmtCtx, &InPack) >= 0)) {
 		len = avcodec_decode_video2(fepCodecCtx, OutFrame, &nComplete, &InPack);
@@ -658,8 +664,10 @@ void CPiliangDlg::OnBnClickedButtonPiextract()
 			for (int i = 0; i < num; i++) {
 				m_listpath.GetText(i, VideoFilepath);
 				if (kk.check1) {
-					PEeature_Extract(1,kind2);
-					Sleep(500);
+					int ret = PEeature_Extract(1,kind2);
+					if (ret == 0) {
+					
+						Sleep(500);
 					m_listfeaturefile.AddString(smp_path);
 					SetHScroll2();
 					m_listinfo.AddString(_T("==提取成功=="));
@@ -667,22 +675,22 @@ void CPiliangDlg::OnBnClickedButtonPiextract()
 					m_listinfo.AddString(smp_path);
 					m_listinfo.AddString(_T("----------------"));
 					SetHScroll3();
+					}
 				
 				}
 				if (kk.check2) {
-					PEeature_Extract(2,kind2);
-					Sleep(500);
-					m_listfeaturefile.AddString(smp_path);
-					SetHScroll2();
-					m_listinfo.AddString(_T("==提取成功=="));
-					m_listinfo.AddString(_T("特征保存在视频所在目录："));
-					m_listinfo.AddString(smp_path);
-					m_listinfo.AddString(_T("----------------"));
-					SetHScroll3();
-
+					int ret = PEeature_Extract(2,kind2);
+					if (ret == 0) {
+						Sleep(500);
+						m_listfeaturefile.AddString(smp_path);
+						SetHScroll2();
+						m_listinfo.AddString(_T("==提取成功=="));
+						m_listinfo.AddString(_T("特征保存在视频所在目录："));
+						m_listinfo.AddString(smp_path);
+						m_listinfo.AddString(_T("----------------"));
+						SetHScroll3();
+					}
 				}
-
-	
 			}
 		}
 
@@ -1022,8 +1030,9 @@ void CPiliangDlg::OnBnClickedButtonPidelframe()
 	m_listframes.GetText(pikeyframe_index, framename);
 	m_listframes.DeleteString(pikeyframe_index);
 	m_listinfo.AddString(_T("删除")+framename);
-	pikeyframe_index--;
-	//nFrame--;
+	if (pikeyframe_index != 0) {
+	 pikeyframe_index--;
+	}
 	piis_showpicture = 1;
 }
 int CPiliangDlg::pisave_newvideo() {
@@ -1044,6 +1053,7 @@ int CPiliangDlg::pisave_newvideo() {
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, filename);
 	if (!oc) {
+		AfxMessageBox(_T("12"));
 		printf("Could not deduce output format from file extension: using MPEG.\n");
 		avformat_alloc_output_context2(&oc, NULL, "mpeg", filename);
 	}
