@@ -283,7 +283,8 @@ void CTezhengDlg::OnBnClickedButtonDel()
 	{
 		if (m_listCtl.GetItemState(i, LVIS_SELECTED) == LVIS_SELECTED) 
 		{
-			tezhengframes.erase(tezhengframes.begin()+i);
+			tezhengframes.erase(tezhengframes.begin() + i);
+			smp_read_data.erase(smp_read_data.begin() + i);
 			needsave = true;
 		}
 	}
@@ -661,6 +662,23 @@ int CTezhengDlg::tesave_newvideo() {
 	avformat_free_context(oc);
 
 
+	//将smp写入文件
+	smp ismp;
+	int size = smp_read_data.size();
+	int checkCode = 20190929;
+	const char* smpfilename = W2A(VideoFilepath + _T(".smp"));
+	vector<smp>::iterator it;
+	ofstream ofile(smpfilename, ios::binary);
+
+	ofile.write((const char*)&checkCode, 4);
+	ofile.write((const char*)&size, 4);
+	for (it = smp_read_data.begin(); it != smp_read_data.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	smp_read_data.clear(); // 清空smp_data vector
+	ofile.close();
 }
 
 void CTezhengDlg::OnBnClickedButtonSave2()
@@ -774,7 +792,11 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 		SmpFilepath = fileDlg.GetPathName();
 		VideoFilepath = FolderPath + _T("\\") + fn;
 		smp_read_data.swap(vector<smp>());
-		GetSMPFile(); //打开smp文件
+		
+		if (!GetSMPFile()) //打开smp文件
+		{
+			return;
+		}
 		listbox_filepath.AddString(SmpFilepath);
 		SetHScroll();
 		tezhengframes.swap(vector<AVFrame*>());
@@ -783,19 +805,31 @@ void CTezhengDlg::OnBnClickedButtonTeopen()
 	}
 }
 
-void  CTezhengDlg::GetSMPFile()
+bool  CTezhengDlg::GetSMPFile()
 {
 	smp ismp;
 	int size;
+	int checkCode;
 
 	ifstream ifile(SmpFilepath, ios::binary);
-	
+	ifile.read((char*)&checkCode, 4);
+
+	CString show;
+	show.Format(_T("%d"), checkCode);
+	AfxMessageBox(show);
+
+	if (checkCode != 20190929) {
+		MessageBox(_T("特征文件格式错误，无法审核编辑"));
+		return false;
+	}
+
 	ifile.read((char*)&size, 4); //读取关键帧数量
 	for (int i = 0; i < size; i++)
 	{
 		ifile.read((char*)&ismp, sizeof(smp));
 		smp_read_data.push_back(ismp);
 	}
+	return true;
 }
 
 

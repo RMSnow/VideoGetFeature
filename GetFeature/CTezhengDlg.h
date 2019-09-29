@@ -93,7 +93,7 @@ public:
 	int tesave_newvideo();
 	void SetHScroll();
 	void SetHScroll2();
-	void GetSMPFile();
+	bool GetSMPFile();
 	afx_msg void OnBnClickedButtonDelfile();
 	afx_msg void OnBnClickedRadioButtonmo();
 	afx_msg void OnBnClickedRadioButtonfrade();

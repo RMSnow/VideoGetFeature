@@ -653,8 +653,10 @@ int CPiliangDlg::PEeature_Extract(int kind1,int kind2) {
 
 	//将smp写入文件
 	int size = pismp.size();
+	int checkCode = 20190929;
 	vector<smp>::iterator it;
 	ofstream ofile(smp_path, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
 	ofile.write((const char*)&size, 4);
 	for (it = pismp.begin(); it != pismp.end(); ++it)
 	{
@@ -821,12 +823,12 @@ int CPiliangDlg::get_allpiframes() {
 
 	//从文件加载smp信息
 	smp ismp;
-	int size;
+	int size,checkCode;
 	SmpFilepath = ""; pismp.clear(); //清空变量信息
 	SmpFilepath = VideoFilepath + _T(".smp");
 
 	ifstream ifile(SmpFilepath, ios::binary);
-
+	ifile.read((char*)&checkCode, 4); //读取校验码
 	ifile.read((char*)&size, 4); //读取关键帧数量
 	for (int i = 0; i < size; i++)
 	{
@@ -1142,8 +1144,22 @@ int CPiliangDlg::pisave_newvideo() {
 	/* free the stream */
 	avformat_free_context(oc);
 
-
-
+	//将smp写入文件
+	smp ismp;
+	int size = pismp.size();
+	int checkCode = 20190929; //smp文件校验码
+	const char* smpfilename = W2A(VideoFilename + _T(".smp"));
+	vector<smp>::iterator it;
+	ofstream ofile(smpfilename, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
+	ofile.write((const char*)&size, 4);
+	for (it = pismp.begin(); it != pismp.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	pismp.clear(); // 清空smp_data vector
+	ofile.close();
 }
 
 void CPiliangDlg::OnBnClickedButtonPisave()

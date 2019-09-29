@@ -832,7 +832,8 @@ void CJiaohuDlg::OnBnClickedButtonDeleframe()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	jiaoneedsave = true;
-	frames.erase(frames.begin()+keyframe_index);
+	frames.erase(frames.begin() + keyframe_index);
+	smp_data.erase(smp_data.begin() + keyframe_index);
 	m_listbox_frame.DeleteString(keyframe_index);
 	keyframe_index--;
 	//nFrame--;
@@ -1542,7 +1543,7 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 			//解码一帧成功
 			write_video_frame(oc, &video_st, OutFrame);
 
-			//把数据写到smp文件中去
+			//保存smp数据
 			ismp.setIndex(k);
 			ismp.setGrade(100 - k); // just for test
 			ismp.setCluster(k / 4);
@@ -1563,8 +1564,10 @@ int CJiaohuDlg::JEeature_Extract(int kind1,int kind2) {
 
 	//将smp写入文件
 	int size = smp_data.size();
+	int checkCode = 20190929; //smp文件校验码
 	vector<smp>::iterator it;
 	ofstream ofile(smpfilename, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
 	ofile.write((const char*)&size, 4);
 	for (it = smp_data.begin(); it != smp_data.end(); ++it)
 	{
@@ -1727,7 +1730,23 @@ int CJiaohuDlg::save_newvideo() {
 		avio_closep(&oc->pb);
 	/* free the stream */
 	avformat_free_context(oc);
-	
+
+	//将smp写入文件
+	smp ismp;
+	int size = smp_data.size();
+	const char* smpfilename = W2A(VideoFilepath + _T(".smp"));
+	const char* checkCode = "mysmpfile"; //smp文件校验码
+	vector<smp>::iterator it;
+	ofstream ofile(smpfilename, ios::binary);
+	ofile.write((const char*)&checkCode, 4);
+	ofile.write((const char*)&size, 4);
+	for (it = smp_data.begin(); it != smp_data.end(); ++it)
+	{
+		ismp = *it;
+		ofile.write((const char*)&ismp, sizeof(smp));
+	}
+	smp_data.clear(); // 清空smp_data vector
+	ofile.close();
 }
 
 void CJiaohuDlg::OnBnClickedButtonSave()
@@ -1743,9 +1762,10 @@ void CJiaohuDlg::OnBnClickedButtonSave()
 void  CJiaohuDlg::JiaoGetSMPFile()
 {
 	smp ismp;
-	int size;
+	int size,checkCode;
 	smp_data.swap(vector<smp>());
 	ifstream ifile(Jiao_SmpFilepath, ios::binary);
+	ifile.read((char*)&checkCode, 4); //读取校验码
 	ifile.read((char*)& size, 4); //读取关键帧数量
 	for (int i = 0; i < size; i++)
 	{
